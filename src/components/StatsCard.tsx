@@ -10,9 +10,11 @@ interface StatsCardProps {
 
 export const StatsCard = ({ title, value, icon: Icon, color, bgColor }: StatsCardProps) => {
   return (
-    <div className="stats-card" style={{ backgroundColor: bgColor }}>
-      <div className="stats-icon" style={{ color }}>
-        <Icon size={32} />
+    <div className="stats-card">
+      <div className="stats-card-header">
+        <div className="stats-icon" style={{ backgroundColor: bgColor, color }}>
+          <Icon size={24} />
+        </div>
       </div>
       <div className="stats-content">
         <h3 className="stats-title">{title}</h3>

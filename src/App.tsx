@@ -380,6 +380,7 @@ function App() {
           />
         </div>
 
+        {/* 데스크톱 탭 네비게이션 */}
         <TabNavigation
           tabs={isAdmin ? [
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
@@ -399,6 +400,33 @@ function App() {
             setSelectedItemForDetail(undefined);
           }}
         />
+
+        {/* 모바일 하단 네비게이션 */}
+        <div className="mobile-bottom-nav">
+          {(isAdmin ? [
+            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
+            { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
+            { id: 'material', label: '부자재', icon: <Wrench size={20} /> },
+            { id: 'orders', label: '발주', icon: <FileText size={20} /> },
+            { id: 'branches', label: '지점', icon: <MapPin size={20} /> },
+          ] : [
+            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
+            { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
+            { id: 'orders', label: '발주', icon: <FileText size={20} /> },
+          ]).map(tab => (
+            <button
+              key={tab.id}
+              className={`mobile-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setSelectedItemForDetail(undefined);
+              }}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
         <div className="tab-content">
           {activeTab === 'dashboard' && (
