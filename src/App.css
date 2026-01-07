@@ -9,12 +9,13 @@
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .app {
-    padding: 12px;
+    padding: 8px;
   }
   
   .app-header {
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border-radius: 12px;
   }
   
   .header-content {
@@ -23,8 +24,31 @@
     gap: 12px;
   }
   
+  .header-title {
+    gap: 8px;
+  }
+  
   .header-title h1 {
-    font-size: 24px;
+    font-size: 20px;
+    line-height: 1.3;
+  }
+  
+  .header-title svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .header-actions .btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
   }
   
   .stats-grid {
@@ -34,101 +58,322 @@
   }
   
   .stats-card {
-    padding: 16px;
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .stats-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .stats-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .stats-title {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  .stats-value {
+    font-size: 24px;
   }
   
   .main-content {
     padding: 16px;
+    border-radius: 12px;
   }
   
   .section-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
   }
   
   .section-header h2 {
     font-size: 20px;
+    line-height: 1.3;
+  }
+  
+  .section-header .btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+  
+  .search-box {
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .search-box svg {
+    width: 20px;
+    height: 20px;
   }
   
   .search-box input {
     width: 100%;
+    font-size: 16px;
+    padding: 0;
+  }
+  
+  /* 테이블을 모바일에서 숨기고 카드 형태로 표시 */
+  .table-container {
+    overflow-x: visible;
   }
   
   .inventory-table {
-    font-size: 14px;
+    display: none !important;
   }
   
-  .inventory-table th,
-  .inventory-table td {
-    padding: 12px 8px;
+  .inventory-table-mobile {
+    display: block;
+  }
+  
+  .inventory-card.low-stock {
+    border-left: 4px solid #f56565;
+    background: #fff5f5;
+  }
+  
+  .inventory-card-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  
+  .inventory-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+  }
+  
+  .inventory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f7fafc;
+  }
+  
+  .inventory-card-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .inventory-card-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .inventory-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .inventory-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+  }
+  
+  .inventory-card-label {
+    color: #4a5568;
+    font-weight: 600;
+  }
+  
+  .inventory-card-value {
+    color: #1a202c;
+    font-weight: 700;
   }
   
   .order-card {
-    padding: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
   }
   
   .order-card-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 12px;
+    margin-bottom: 12px;
   }
   
   .order-actions {
     flex-direction: column;
     gap: 8px;
+    width: 100%;
   }
   
   .order-actions .btn {
     width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
   }
   
   .branch-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   
   .branch-card {
     padding: 16px;
+    border-radius: 12px;
+  }
+  
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
   }
   
   .modal-content {
-    width: 95%;
-    max-width: 95%;
-    margin: 20px auto;
-    max-height: 90vh;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    max-height: 95vh;
+    border-radius: 20px 20px 0 0;
+    overflow-y: auto;
+  }
+  
+  .modal-header {
+    padding: 20px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  
+  .modal-header h2 {
+    font-size: 20px;
+  }
+  
+  .close-btn {
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .item-form,
+  .order-detail-content,
+  .user-management-content {
+    padding: 20px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .form-group label {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  
+  .form-group input,
+  .form-group textarea,
+  .form-select {
+    padding: 14px 16px;
+    font-size: 16px;
+    border-radius: 12px;
+    min-height: 48px;
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 24px;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+  
+  .btn {
+    padding: 14px 20px;
+    font-size: 16px;
+    border-radius: 12px;
+    min-height: 48px;
+    touch-action: manipulation;
+  }
+  
+  .btn-small {
+    padding: 12px 16px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+  
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  
+  .icon-btn svg {
+    width: 20px;
+    height: 20px;
   }
   
   .tab-navigation {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    padding: 8px;
+    margin: 0 -8px 20px -8px;
   }
   
   .tab-navigation .tab-list {
     flex-wrap: nowrap;
     min-width: max-content;
+    gap: 4px;
   }
   
   .tab-navigation .tab-item {
     white-space: nowrap;
-    padding: 10px 16px;
+    padding: 12px 16px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+  
+  .bom-table-container,
+  .consumption-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  
+  .bom-table,
+  .consumption-table {
+    min-width: 500px;
     font-size: 14px;
   }
   
-  .bom-table-container {
-    overflow-x: auto;
-  }
-  
-  .bom-table {
-    min-width: 500px;
-    font-size: 13px;
-  }
-  
-  .consumption-table-container {
-    overflow-x: auto;
-  }
-  
-  .consumption-table {
-    min-width: 600px;
-    font-size: 13px;
+  .bom-table th,
+  .bom-table td,
+  .consumption-table th,
+  .consumption-table td {
+    padding: 12px 8px;
   }
   
   .dashboard-content {
@@ -139,6 +384,69 @@
   
   .dashboard-section {
     width: 100%;
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .dashboard-section h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  
+  .transaction-history {
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .transaction-history h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  
+  .transaction-item {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  
+  .transaction-icon {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .login-card {
+    padding: 32px 24px;
+    border-radius: 20px;
+    margin: 20px;
+  }
+  
+  .login-header h1 {
+    font-size: 24px;
+  }
+  
+  .login-form {
+    gap: 16px;
+  }
+  
+  .login-btn {
+    padding: 16px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+  
+  .stats-card {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 터치 영역 최소 크기 보장 */
+  a, button, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* 스크롤 개선 */
+  * {
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -305,6 +613,11 @@
 .inventory-table {
   width: 100%;
   border-collapse: collapse;
+}
+
+/* 데스크톱에서 모바일 카드 숨기기 */
+.inventory-table-mobile {
+  display: none;
 }
 
 .inventory-table thead {
