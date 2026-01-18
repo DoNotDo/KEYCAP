@@ -25,6 +25,7 @@ import { ReportGenerator } from './components/ReportGenerator';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { OrderProcessingModal } from './components/OrderProcessingModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
+import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt } from 'lucide-react';
@@ -430,6 +431,7 @@ function App() {
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
             { id: 'finished', label: '완성재고', icon: <Box size={18} /> },
             { id: 'material', label: '부자재 재고', icon: <Wrench size={18} /> },
+            { id: 'material-orders-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },
             { id: 'material-orders', label: '부자재 발주 내역', icon: <FileText size={18} /> },
             { id: 'orders', label: '지점 발주 내역', icon: <FileText size={18} /> },
             { id: 'branches', label: '지점 관리', icon: <MapPin size={18} /> },
@@ -451,6 +453,7 @@ function App() {
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
             { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
             { id: 'material', label: '부자재', icon: <Wrench size={20} /> },
+            { id: 'material-orders-summary', label: '발주 요약', icon: <FileText size={20} /> },
             { id: 'material-orders', label: '부자재 발주', icon: <FileText size={20} /> },
             { id: 'orders', label: '발주', icon: <FileText size={20} /> },
             { id: 'branches', label: '지점', icon: <MapPin size={20} /> },
@@ -703,6 +706,18 @@ function App() {
                 onUpdateOrder={handleUpdateMaterialOrder}
                 onDeleteOrder={handleDeleteMaterialOrder}
                 onSyncCatalog={handleSyncCatalog}
+              />
+            </div>
+          )}
+
+          {activeTab === 'material-orders-summary' && isAdmin && (
+            <div className="main-content">
+              <div className="section-header">
+                <h2>부자재 발주 요약</h2>
+              </div>
+              <MaterialOrderSummary
+                materialOrders={materialOrders}
+                materialItems={materialItems}
               />
             </div>
           )}

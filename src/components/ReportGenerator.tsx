@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ReportData, ReportPeriod, Order, ConsumptionRecord, InventoryItem } from '../types';
 import { FileText, Download, Calendar } from 'lucide-react';
 import { X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface ReportGeneratorProps {
   orders: Order[];
@@ -82,64 +83,52 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
 
   const handleGenerate = () => {
     const report = generateReport();
-    const reportText = formatReport(report);
-    downloadReport(reportText, period, startDate, endDate);
+    downloadReport(report, period, startDate, endDate);
   };
 
-  const formatReport = (report: ReportData): string => {
-    const periodName = report.period === 'week' ? '주간' : '월간';
-    let text = `=== ${periodName} 보고서 ===\n`;
-    text += `기간: ${new Date(report.startDate).toLocaleDateString('ko-KR')} ~ ${new Date(report.endDate).toLocaleDateString('ko-KR')}\n\n`;
-    text += `총 발주 건수: ${report.totalOrders}건\n`;
-    text += `총 완성재고 소모: ${report.totalFinishedItemsConsumed}개\n`;
-    text += `총 부자재 소모: ${report.totalMaterialsConsumed}개\n\n`;
-    
-    // 발주 내역 상세 (완성도 포함)
-    text += `--- 발주 내역 상세 ---\n`;
-    report.orders.forEach(order => {
+  const downloadReport = (report: ReportData, period: ReportPeriod, start: string, end: string) => {
+    const periodName = period === 'week' ? '주간' : '월간';
+    const summaryRows = [
+      { 항목: '보고서 유형', 값: periodName },
+      { 항목: '기간', 값: `${new Date(report.startDate).toLocaleDateString('ko-KR')} ~ ${new Date(report.endDate).toLocaleDateString('ko-KR')}` },
+      { 항목: '총 발주 건수', 값: report.totalOrders },
+      { 항목: '총 완성재고 소모', 값: report.totalFinishedItemsConsumed },
+      { 항목: '총 부자재 소모', 값: report.totalMaterialsConsumed },
+    ];
+
+    const orderRows = report.orders.map(order => {
       const finishedItem = items.find(i => i.id === order.finishedItemId);
-      const completionRate = order.shippedQuantity && order.quantity > 0 
+      const completionRate = order.shippedQuantity && order.quantity > 0
         ? Math.round((order.shippedQuantity / order.quantity) * 100)
         : null;
-      text += `[${order.branchName}] ${finishedItem?.name || '알 수 없음'}\n`;
-      text += `  요청: ${order.quantity}개`;
-      if (order.shippedQuantity) {
-        text += ` | 출고: ${order.shippedQuantity}개`;
-        if (completionRate !== null) {
-          text += ` (완성도: ${completionRate}%)`;
-        }
-      }
-      text += `\n`;
-      text += `  주문일: ${new Date(order.orderDate).toLocaleDateString('ko-KR')}\n`;
-      if (order.shippedAt) {
-        text += `  출고일: ${new Date(order.shippedAt).toLocaleDateString('ko-KR')}\n`;
-      }
-      text += `\n`;
+      return {
+        지점: order.branchName,
+        품목: finishedItem?.name || '알 수 없음',
+        요청수량: order.quantity,
+        출고수량: order.shippedQuantity || '',
+        완성도: completionRate ? `${completionRate}%` : '',
+        주문일: order.orderDate ? new Date(order.orderDate).toLocaleDateString('ko-KR') : '',
+        출고일: order.shippedAt ? new Date(order.shippedAt).toLocaleDateString('ko-KR') : '',
+      };
     });
-    
-    text += `--- 완성재고 소모 내역 ---\n`;
-    report.finishedItemConsumptions.forEach(item => {
-      text += `${item.itemName}: ${item.totalQuantity}개\n`;
-    });
-    
-    text += `\n--- 부자재 소모 내역 ---\n`;
-    report.materialConsumptions.forEach(item => {
-      text += `${item.itemName}: ${item.totalQuantity}개\n`;
-    });
-    
-    return text;
-  };
 
-  const downloadReport = (content: string, period: ReportPeriod, start: string, end: string) => {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${period === 'week' ? '주간' : '월간'}_보고서_${start}_${end}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const finishedRows = report.finishedItemConsumptions.map(item => ({
+      품목: item.itemName,
+      소모수량: item.totalQuantity,
+    }));
+
+    const materialRows = report.materialConsumptions.map(item => ({
+      품목: item.itemName,
+      소모수량: item.totalQuantity,
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), '요약');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows), '발주내역');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(finishedRows), '완성재고소모');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(materialRows), '부자재소모');
+
+    XLSX.writeFile(wb, `${periodName}_보고서_${start}_${end}.xlsx`);
   };
 
   return (
@@ -192,7 +181,7 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
             </button>
             <button onClick={handleGenerate} className="btn btn-primary">
               <Download size={18} />
-              보고서 다운로드
+              엑셀 다운로드
             </button>
           </div>
         </div>
