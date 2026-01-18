@@ -95,6 +95,25 @@ export const OrderForm = ({ finishedItems, branches, onProcess, onCancel, consum
             </select>
           </div>
 
+          {selectedItem && (
+            <div className="selected-item-preview">
+              <div className="preview-image">
+                {selectedItem.imageUrl ? (
+                  <img src={selectedItem.imageUrl} alt={selectedItem.name} />
+                ) : (
+                  <div className="preview-placeholder">이미지 없음</div>
+                )}
+              </div>
+              <div className="preview-info">
+                <h4>{selectedItem.name}</h4>
+                {selectedItem.sku && <span className="preview-sku">코드: {selectedItem.sku}</span>}
+                <span className="preview-quantity">
+                  현재 재고: {selectedItem.quantity.toLocaleString()} {selectedItem.unit}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
             <label>주문 수량 *</label>
             <input

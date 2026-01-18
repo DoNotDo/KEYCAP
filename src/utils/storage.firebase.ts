@@ -12,7 +12,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
 
 // Firestore 컬렉션 이름
 const COLLECTIONS = {
@@ -22,6 +22,7 @@ const COLLECTIONS = {
   ORDERS: 'orders',
   CONSUMPTIONS: 'consumptions',
   MATERIAL_ORDERS: 'materialOrders',
+  BRANCH_NOTES: 'branchNotes',
 };
 
 // 실시간 리스너 관리
@@ -307,6 +308,57 @@ export const storage = {
       await deleteDoc(orderRef);
     } catch (error) {
       console.error('Error deleting material order:', error);
+      throw error;
+    }
+  },
+
+  // Branch Notes
+  getBranchNotes: async (): Promise<BranchNote[]> => {
+    try {
+      const snapshot = await getDocs(collection(db, COLLECTIONS.BRANCH_NOTES));
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as BranchNote;
+      });
+    } catch (error) {
+      console.error('Error getting branch notes:', error);
+      return [];
+    }
+  },
+
+  subscribeBranchNotes: (callback: (notes: BranchNote[]) => void): (() => void) => {
+    const q = query(collection(db, COLLECTIONS.BRANCH_NOTES));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notes = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as BranchNote;
+      });
+      callback(notes);
+    }, (error) => {
+      console.error('Error subscribing to branch notes:', error);
+    });
+    listeners['branchNotes'] = unsubscribe;
+    return unsubscribe;
+  },
+
+  saveBranchNote: async (note: BranchNote): Promise<void> => {
+    try {
+      const noteId = note.id || note.branchName;
+      const noteRef = doc(db, COLLECTIONS.BRANCH_NOTES, noteId);
+      await setDoc(noteRef, {
+        ...note,
+        updatedAt: Timestamp.fromDate(new Date(note.updatedAt)),
+      });
+    } catch (error) {
+      console.error('Error saving branch note:', error);
       throw error;
     }
   },

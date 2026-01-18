@@ -5,13 +5,19 @@ import { X } from 'lucide-react';
 interface ItemFormProps {
   item?: InventoryItem;
   defaultType?: ItemType;
+  branches?: string[];
+  defaultBranchName?: string;
+  isAdmin?: boolean;
   onSubmit: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
-export const ItemForm = ({ item, defaultType, onSubmit, onCancel }: ItemFormProps) => {
+export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdmin, onSubmit, onCancel }: ItemFormProps) => {
   const [formData, setFormData] = useState({
+    branchName: item?.branchName || defaultBranchName || '',
     name: item?.name || '',
+    sku: item?.sku || '',
+    imageUrl: item?.imageUrl || '',
     category: item?.category || '',
     type: (item?.type || defaultType || 'material') as ItemType,
     quantity: item?.quantity || 0,
@@ -55,6 +61,33 @@ export const ItemForm = ({ item, defaultType, onSubmit, onCancel }: ItemFormProp
         <form onSubmit={handleSubmit} className="item-form">
           <div className="form-row">
             <div className="form-group">
+              <label>지점 *</label>
+              {isAdmin && branches && branches.length > 0 ? (
+                <select
+                  value={formData.branchName}
+                  onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
+                  className="form-select"
+                  required
+                >
+                  <option value="">지점 선택</option>
+                  {branches.map(branch => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.branchName}
+                  onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
+                  placeholder="지점명"
+                  required
+                  disabled={!!defaultBranchName}
+                />
+              )}
+            </div>
+            <div className="form-group">
               <label>품목명 *</label>
               <input
                 type="text"
@@ -78,6 +111,15 @@ export const ItemForm = ({ item, defaultType, onSubmit, onCancel }: ItemFormProp
           </div>
 
           <div className="form-row">
+            <div className="form-group">
+              <label>상품 코드</label>
+              <input
+                type="text"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                placeholder="예: MAT-001"
+              />
+            </div>
             <div className="form-group">
               <label>카테고리 *</label>
               <input
@@ -177,6 +219,16 @@ export const ItemForm = ({ item, defaultType, onSubmit, onCancel }: ItemFormProp
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>이미지 URL</label>
+            <input
+              type="text"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+              placeholder="/catalog/images/파일명.png"
+            />
           </div>
 
           <div className="form-group">

@@ -28,6 +28,7 @@ export const mapCatalogToInventoryItem = (item: CatalogItem): Omit<InventoryItem
     name: item.name,
     category: item.category,
     type: item.type,
+    branchName: '본사',
     quantity: 0,
     minQuantity: item.minQuantity,
     maxQuantity: item.maxQuantity,

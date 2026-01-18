@@ -26,6 +26,7 @@ import { ItemDetailModal } from './components/ItemDetailModal';
 import { OrderProcessingModal } from './components/OrderProcessingModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { MaterialOrderSummary } from './components/MaterialOrderSummary';
+import { BranchNotes } from './components/BranchNotes';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt } from 'lucide-react';
@@ -50,6 +51,7 @@ function App() {
     bomItems,
     orders,
     materialOrders,
+    branchNotes,
     loading,
     addItem,
     updateItem,
@@ -65,6 +67,7 @@ function App() {
     addMaterialOrder,
     updateMaterialOrder,
     deleteMaterialOrder,
+    saveBranchNote,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,
@@ -86,25 +89,86 @@ function App() {
   const [orderFinishedItemId, setOrderFinishedItemId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | undefined>();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports'>('dashboard');
+  const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
+  const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'branch-orders'>('branch-orders');
+  const [branchTab, setBranchTab] = useState<'notes' | 'management'>('notes');
   const [selectedStatsType, setSelectedStatsType] = useState<'totalItems' | 'lowStock' | 'totalValue' | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<InventoryItem | undefined>();
   const [selectedBranchForDetail, setSelectedBranchForDetail] = useState<string | undefined>();
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
 
+  const isAdmin = currentUser?.role === 'admin';
+
   const stats = getStats();
   const finishedItems = useMemo(() => items.filter(item => item.type === 'finished'), [items]);
   const materialItems = useMemo(() => items.filter(item => item.type === 'material'), [items]);
+  const branchName = currentUser?.branchName;
+  const branchItems = useMemo(() => {
+    if (isAdmin) return items;
+    return items.filter(item => item.branchName === branchName);
+  }, [items, isAdmin, branchName]);
+  const branchFinishedItems = useMemo(() => branchItems.filter(item => item.type === 'finished'), [branchItems]);
+  const branchMaterialItems = useMemo(() => branchItems.filter(item => item.type === 'material'), [branchItems]);
+  const branchOrders = useMemo(() => orders.filter(order => order.branchName === branchName), [orders, branchName]);
+  const branchConsumptions = useMemo(() => consumptions.filter(cons => cons.branchName === branchName), [consumptions, branchName]);
   const allConsumptions = useMemo(() => calculateAllMaterialConsumption(), [orders, items, bomItems]);
   const branchShortages = useMemo(() => calculateBranchShortages(), [orders, items, bomItems]);
+
+  const branchStats = useMemo(() => {
+    const lowStockItems = branchItems.filter(item => item.quantity <= item.minQuantity).length;
+    const totalValue = branchItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const recentTransactions = branchConsumptions.filter(
+      t => new Date(t.processedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+    ).length;
+    const finishedCount = branchFinishedItems.length;
+    const materialCount = branchMaterialItems.length;
+    const pendingOrders = branchOrders.filter(order => order.status === 'pending').length;
+
+    return {
+      totalItems: branchItems.length,
+      lowStockItems,
+      totalValue,
+      recentTransactions,
+      finishedItems: finishedCount,
+      materialItems: materialCount,
+      pendingOrders,
+    };
+  }, [branchItems, branchConsumptions, branchFinishedItems, branchMaterialItems, branchOrders]);
+
+  const displayStats = isAdmin ? stats : branchStats;
+  const recentBranchOrders = useMemo(() => {
+    return [...branchOrders]
+      .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
+      .slice(0, 5);
+  }, [branchOrders]);
+  const recentBranchConsumptions = useMemo(() => {
+    return [...branchConsumptions]
+      .sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime())
+      .slice(0, 5);
+  }, [branchConsumptions]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      setOrderTab('material-summary');
+    } else {
+      setOrderTab('branch-orders');
+      setInventoryTab('finished');
+      setBranchTab('notes');
+    }
+  }, [isAdmin]);
   
   // 지점 목록 추출 (orders에서)
   const branchNames = useMemo(() => {
     const branchSet = new Set<string>();
     orders.forEach(order => branchSet.add(order.branchName));
+    if (currentUser?.branchName) {
+      branchSet.add(currentUser.branchName);
+    }
+    branchSet.add('본사');
     return Array.from(branchSet).sort();
-  }, [orders]);
+  }, [orders, currentUser?.branchName]);
   
   // 주문 입력 시 실시간 계산
   // 주문 폼에서 선택한 완성재고와 수량에 따른 부자재 소모량 계산
@@ -197,11 +261,13 @@ function App() {
     setBomItem(undefined);
     
     // 강제 리렌더링을 위해 탭을 잠시 변경했다가 다시 돌아오기
-    const currentTab = activeTab;
-    if (currentTab === 'finished') {
-      setActiveTab('dashboard');
+    const currentPrimary = primaryTab;
+    const currentInventory = inventoryTab;
+    if (currentPrimary === 'inventory' && currentInventory === 'finished') {
+      setPrimaryTab('dashboard');
       setTimeout(() => {
-        setActiveTab('finished');
+        setPrimaryTab('inventory');
+        setInventoryTab('finished');
       }, 100);
     }
   };
@@ -331,8 +397,6 @@ function App() {
     );
   }
 
-  const isAdmin = currentUser.role === 'admin';
-
   return (
     <div className="app">
       <header className="app-header">
@@ -371,7 +435,7 @@ function App() {
           <div onClick={() => setSelectedStatsType('totalItems')} style={{ cursor: 'pointer' }}>
             <StatsCard
               title="전체 품목"
-              value={stats.totalItems}
+              value={displayStats.totalItems}
               icon={Package}
               color="#667eea"
               bgColor="rgba(102, 126, 234, 0.1)"
@@ -380,7 +444,7 @@ function App() {
           <div onClick={() => setSelectedStatsType('lowStock')} style={{ cursor: 'pointer' }}>
             <StatsCard
               title="재고 부족"
-              value={stats.lowStockItems}
+              value={displayStats.lowStockItems}
               icon={AlertTriangle}
               color="#f56565"
               bgColor="rgba(245, 101, 101, 0.1)"
@@ -389,7 +453,7 @@ function App() {
           <div onClick={() => setSelectedStatsType('totalValue')} style={{ cursor: 'pointer' }}>
             <StatsCard
               title="총 재고 가치"
-              value={`${stats.totalValue.toLocaleString()}원`}
+              value={`${displayStats.totalValue.toLocaleString()}원`}
               icon={DollarSign}
               color="#48bb78"
               bgColor="rgba(72, 187, 120, 0.1)"
@@ -397,76 +461,74 @@ function App() {
           </div>
           <StatsCard
             title="24시간 내 거래"
-            value={stats.recentTransactions}
+            value={displayStats.recentTransactions}
             icon={Activity}
             color="#ed8936"
             bgColor="rgba(237, 137, 54, 0.1)"
           />
           <StatsCard
             title="완성재고"
-            value={stats.finishedItems}
+            value={displayStats.finishedItems}
             icon={Package}
             color="#9f7aea"
             bgColor="rgba(159, 122, 234, 0.1)"
           />
           <StatsCard
             title="부자재"
-            value={stats.materialItems}
+            value={displayStats.materialItems}
             icon={Package}
             color="#38b2ac"
             bgColor="rgba(56, 178, 172, 0.1)"
           />
           <StatsCard
             title="대기 주문"
-            value={stats.pendingOrders}
+            value={displayStats.pendingOrders}
             icon={ShoppingCart}
             color="#f6ad55"
             bgColor="rgba(246, 173, 85, 0.1)"
           />
         </div>
 
-        {/* 데스크톱 탭 네비게이션 */}
+        {/* 데스크톱 탭 네비게이션 (상위 카테고리) */}
         <TabNavigation
           tabs={isAdmin ? [
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
-            { id: 'finished', label: '완성재고', icon: <Box size={18} /> },
-            { id: 'material', label: '부자재 재고', icon: <Wrench size={18} /> },
-            { id: 'material-orders-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },
-            { id: 'material-orders', label: '부자재 발주 내역', icon: <FileText size={18} /> },
-            { id: 'orders', label: '지점 발주 내역', icon: <FileText size={18} /> },
-            { id: 'branches', label: '지점 관리', icon: <MapPin size={18} /> },
+            { id: 'inventory', label: '재고', icon: <Box size={18} /> },
+            { id: 'orders', label: '발주', icon: <FileText size={18} /> },
+            { id: 'branches', label: '지점', icon: <MapPin size={18} /> },
+            { id: 'reports', label: '리포트', icon: <Receipt size={18} /> },
           ] : [
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
-            { id: 'finished', label: '완성재고', icon: <Box size={18} /> },
-            { id: 'orders', label: '지점 발주 내역', icon: <FileText size={18} /> },
+            { id: 'inventory', label: '재고', icon: <Box size={18} /> },
+            { id: 'orders', label: '발주', icon: <FileText size={18} /> },
+            { id: 'branches', label: '특이사항', icon: <MapPin size={18} /> },
           ]}
-          activeTab={activeTab}
+          activeTab={primaryTab}
           onTabChange={(tabId) => {
-            setActiveTab(tabId);
+            setPrimaryTab(tabId as typeof primaryTab);
             setSelectedItemForDetail(undefined);
           }}
         />
 
-        {/* 모바일 하단 네비게이션 */}
+        {/* 모바일 하단 네비게이션 (상위 카테고리) */}
         <div className="mobile-bottom-nav">
           {(isAdmin ? [
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
-            { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
-            { id: 'material', label: '부자재', icon: <Wrench size={20} /> },
-            { id: 'material-orders-summary', label: '발주 요약', icon: <FileText size={20} /> },
-            { id: 'material-orders', label: '부자재 발주', icon: <FileText size={20} /> },
+            { id: 'inventory', label: '재고', icon: <Box size={20} /> },
             { id: 'orders', label: '발주', icon: <FileText size={20} /> },
             { id: 'branches', label: '지점', icon: <MapPin size={20} /> },
+            { id: 'reports', label: '리포트', icon: <Receipt size={20} /> },
           ] : [
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
-            { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
+            { id: 'inventory', label: '재고', icon: <Box size={20} /> },
             { id: 'orders', label: '발주', icon: <FileText size={20} /> },
+            { id: 'branches', label: '특이사항', icon: <MapPin size={20} /> },
           ]).map(tab => (
             <button
               key={tab.id}
-              className={`mobile-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              className={`mobile-nav-item ${primaryTab === tab.id ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab(tab.id);
+                setPrimaryTab(tab.id as typeof primaryTab);
                 setSelectedItemForDetail(undefined);
               }}
             >
@@ -477,27 +539,77 @@ function App() {
         </div>
 
         <div className="tab-content">
-          {activeTab === 'dashboard' && (
-            <div className="dashboard-content">
-              <div className="dashboard-section">
-                <h2>최근 거래 내역</h2>
-                <TransactionHistory transactions={transactions} items={items} />
+          {primaryTab === 'dashboard' && (
+            isAdmin ? (
+              <div className="dashboard-content">
+                <div className="dashboard-section">
+                  <h2>최근 거래 내역</h2>
+                  <TransactionHistory transactions={transactions} items={items} />
+                </div>
+                <div className="dashboard-section">
+                  <h2>부자재 소모량 추산</h2>
+                  <MaterialConsumptionPanel 
+                    consumptions={allConsumptions}
+                    branchShortages={branchShortages}
+                    onBranchClick={setSelectedBranchShortage}
+                  />
+                </div>
               </div>
-              <div className="dashboard-section">
-                <h2>부자재 소모량 추산</h2>
-                <MaterialConsumptionPanel 
-                  consumptions={allConsumptions}
-                  branchShortages={branchShortages}
-                  onBranchClick={setSelectedBranchShortage}
-                />
+            ) : (
+              <div className="dashboard-content">
+                <div className="dashboard-section">
+                  <h2>지점 발주 현황</h2>
+                  {recentBranchOrders.length === 0 ? (
+                    <p className="empty-state">최근 발주 내역이 없습니다.</p>
+                  ) : (
+                    <div className="simple-list">
+                      {recentBranchOrders.map(order => (
+                        <div key={order.id} className="simple-list-item">
+                          <span>{items.find(item => item.id === order.finishedItemId)?.name || '알 수 없음'}</span>
+                          <span>{order.quantity.toLocaleString()}개</span>
+                          <span>{new Date(order.orderDate).toLocaleDateString('ko-KR')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="dashboard-section">
+                  <h2>지점 소모/출고 내역</h2>
+                  {recentBranchConsumptions.length === 0 ? (
+                    <p className="empty-state">최근 소모 내역이 없습니다.</p>
+                  ) : (
+                    <div className="simple-list">
+                      {recentBranchConsumptions.map(cons => (
+                        <div key={cons.id} className="simple-list-item">
+                          <span>{items.find(item => item.id === cons.itemId)?.name || '알 수 없음'}</span>
+                          <span>-{cons.quantity.toLocaleString()}개</span>
+                          <span>{new Date(cons.processedAt).toLocaleDateString('ko-KR')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )
           )}
 
-          {activeTab === 'finished' && (
+          {primaryTab === 'inventory' && (
             <div className="main-content">
+              {isAdmin ? (
+                <TabNavigation
+                  tabs={[
+                    { id: 'finished', label: '완성재고', icon: <Box size={18} /> },
+                    { id: 'material', label: '부자재 재고', icon: <Wrench size={18} /> },
+                  ]}
+                  activeTab={inventoryTab}
+                  onTabChange={(tabId) => {
+                    setInventoryTab(tabId as typeof inventoryTab);
+                    setSelectedItemForDetail(undefined);
+                  }}
+                />
+              ) : null}
               <div className="section-header">
-                <h2>완성재고</h2>
+                <h2>{inventoryTab === 'material' ? '부자재 재고' : '완성재고'}</h2>
                 {isAdmin && (
                   <button
                     className="btn btn-primary"
@@ -507,7 +619,7 @@ function App() {
                     }}
                   >
                     <Plus size={18} />
-                    완성재고 추가
+                    재고 추가
                   </button>
                 )}
               </div>
@@ -521,62 +633,62 @@ function App() {
                 />
               </div>
               <InventoryTable
-                items={finishedItems.filter(item =>
+                items={(inventoryTab === 'material' ? (isAdmin ? materialItems : branchMaterialItems) : (isAdmin ? finishedItems : branchFinishedItems)).filter(item =>
                   item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   item.category.toLowerCase().includes(searchTerm.toLowerCase())
                 )}
                 onEdit={isAdmin ? handleEditItem : undefined}
                 onDelete={isAdmin ? deleteItem : undefined}
                 onTransaction={handleTransaction}
-                onBOMSettings={isAdmin ? handleBOMSettings : undefined}
+                onBOMSettings={isAdmin && inventoryTab === 'finished' ? handleBOMSettings : undefined}
                 onViewDetail={(item) => setSelectedItemForDetail(item)}
                 searchTerm=""
               />
-              {/* 모든 완성재고의 BOM 표시 */}
-              <div style={{ marginTop: '32px' }}>
-                <h3 style={{ marginBottom: '16px', color: '#1a73e8' }}>BOM 설정 현황</h3>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                  {finishedItems.map(item => {
-                    const itemBOM = getBOMByFinishedItem(item.id);
-                    console.log(`BOM 조회 - ${item.name}:`, { itemId: item.id, bomCount: itemBOM.length, bomItems: itemBOM });
-                    return (
-                      <div key={item.id} style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <h4 style={{ margin: 0, color: '#202124', fontSize: '18px', fontWeight: 600 }}>
-                            {item.name}
-                            {itemBOM.length > 0 && (
-                              <span style={{ marginLeft: '8px', fontSize: '14px', color: '#1a73e8', fontWeight: 400 }}>
-                                ({itemBOM.length}개 부자재)
-                              </span>
+              {inventoryTab === 'finished' && isAdmin && (
+                <div style={{ marginTop: '32px' }}>
+                  <h3 style={{ marginBottom: '16px', color: '#1a73e8' }}>BOM 설정 현황</h3>
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    {finishedItems.map(item => {
+                      const itemBOM = getBOMByFinishedItem(item.id);
+                      return (
+                        <div key={item.id} style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h4 style={{ margin: 0, color: '#202124', fontSize: '18px', fontWeight: 600 }}>
+                              {item.name}
+                              {itemBOM.length > 0 && (
+                                <span style={{ marginLeft: '8px', fontSize: '14px', color: '#1a73e8', fontWeight: 400 }}>
+                                  ({itemBOM.length}개 부자재)
+                                </span>
+                              )}
+                            </h4>
+                            {isAdmin && (
+                              <button
+                                className="btn btn-secondary btn-small"
+                                onClick={() => handleBOMSettings(item)}
+                              >
+                                BOM 설정
+                              </button>
                             )}
-                          </h4>
-                          {isAdmin && (
-                            <button
-                              className="btn btn-secondary btn-small"
-                              onClick={() => handleBOMSettings(item)}
-                            >
-                              BOM 설정
-                            </button>
+                          </div>
+                          {itemBOM.length > 0 ? (
+                            <BOMReceipt
+                              finishedItem={item}
+                              bomItems={itemBOM}
+                              materialItems={materialItems}
+                            />
+                          ) : (
+                            <div style={{ padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                              <p style={{ color: '#9aa0a6', margin: 0, fontSize: '14px' }}>
+                                ⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.
+                              </p>
+                            </div>
                           )}
                         </div>
-                        {itemBOM.length > 0 ? (
-                          <BOMReceipt
-                            finishedItem={item}
-                            bomItems={itemBOM}
-                            materialItems={materialItems}
-                          />
-                        ) : (
-                          <div style={{ padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-                            <p style={{ color: '#9aa0a6', margin: 0, fontSize: '14px' }}>
-                              ⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
               {selectedItemForDetail && (
                 <div style={{ marginTop: '24px' }}>
                   <ConsumptionHistory
@@ -590,135 +702,137 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'material' && (
+          {primaryTab === 'orders' && (
             <div className="main-content">
-              <div className="section-header">
-                <h2>부자재</h2>
-                {isAdmin && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                      setEditingItem(undefined);
-                      setShowItemForm(true);
-                    }}
-                  >
-                    <Plus size={18} />
-                    부자재 추가
-                  </button>
-                )}
-              </div>
-              <div className="search-box" style={{ marginBottom: '20px' }}>
-                <Search size={20} />
-                <input
-                  type="text"
-                  placeholder="품목명, 카테고리로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+              {isAdmin && (
+                <TabNavigation
+                  tabs={[
+                    { id: 'material-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },
+                    { id: 'material-detail', label: '부자재 발주 내역', icon: <FileText size={18} /> },
+                    { id: 'branch-orders', label: '지점 발주 내역', icon: <FileText size={18} /> },
+                  ]}
+                  activeTab={orderTab}
+                  onTabChange={(tabId) => setOrderTab(tabId as typeof orderTab)}
                 />
-              </div>
-              <InventoryTable
-                items={materialItems.filter(item =>
-                  item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  item.category.toLowerCase().includes(searchTerm.toLowerCase())
-                )}
-                onEdit={isAdmin ? handleEditItem : undefined}
-                onDelete={isAdmin ? deleteItem : undefined}
-                onTransaction={handleTransaction}
-                onViewDetail={(item) => setSelectedItemForDetail(item)}
-                searchTerm=""
-              />
+              )}
+              {(!isAdmin || orderTab === 'branch-orders') && (
+                <>
+                  <div className="section-header">
+                    <h2>지점 발주 내역</h2>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => setShowOrderForm(true)}
+                      >
+                        <ShoppingCart size={18} />
+                        지점 주문 입력
+                      </button>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => setShowProcessingModal(true)}
+                      >
+                        <Package size={18} />
+                        발주 처리
+                      </button>
+                    </div>
+                  )}
+                  <OrderListWithTabs
+                    orders={orders}
+                    items={items}
+                    currentUser={currentUser}
+                    onStatusUpdate={handleOrderStatusUpdate}
+                    onViewDetail={handleViewOrderDetail}
+                    onProcess={handleProcessOrder}
+                    onShip={handleShipOrder}
+                    onReceive={handleReceiveOrder}
+                    calculateConsumption={(finishedItemId, quantity) => {
+                      const consumptions = calculateMaterialConsumption(finishedItemId, quantity);
+                      return consumptions.map(c => ({
+                        materialName: c.materialName,
+                        quantity: c.requiredQuantity,
+                      }));
+                    }}
+                  />
+                </>
+              )}
+              {isAdmin && orderTab === 'material-detail' && (
+                <>
+                  <div className="section-header">
+                    <h2>부자재 발주 내역</h2>
+                  </div>
+                  <MaterialOrderManagement
+                    materialOrders={materialOrders}
+                    materialItems={materialItems}
+                    onAddOrder={handleAddMaterialOrder}
+                    onUpdateOrder={handleUpdateMaterialOrder}
+                    onDeleteOrder={handleDeleteMaterialOrder}
+                    onSyncCatalog={handleSyncCatalog}
+                  />
+                </>
+              )}
+              {isAdmin && orderTab === 'material-summary' && (
+                <>
+                  <div className="section-header">
+                    <h2>부자재 발주 요약</h2>
+                  </div>
+                  <MaterialOrderSummary
+                    materialOrders={materialOrders}
+                    materialItems={materialItems}
+                  />
+                </>
+              )}
             </div>
           )}
 
-          {activeTab === 'orders' && (
+          {primaryTab === 'branches' && (
+            <div className="main-content">
+              {isAdmin && (
+                <TabNavigation
+                  tabs={[
+                    { id: 'notes', label: '지점 특이사항', icon: <FileText size={18} /> },
+                    { id: 'management', label: '지점 관리', icon: <MapPin size={18} /> },
+                  ]}
+                  activeTab={branchTab}
+                  onTabChange={(tabId) => setBranchTab(tabId as typeof branchTab)}
+                />
+              )}
+              {(!isAdmin || branchTab === 'notes') && (
+                <BranchNotes
+                  currentUser={currentUser}
+                  branches={branchNames}
+                  notes={branchNotes}
+                  onSave={saveBranchNote}
+                />
+              )}
+              {isAdmin && branchTab === 'management' && (
+                <BranchManagement
+                  branchShortages={branchShortages}
+                  orders={orders}
+                  items={items}
+                  onBranchClick={setSelectedBranchShortage}
+                  onBranchDetail={setSelectedBranchForDetail}
+                />
+              )}
+            </div>
+          )}
+
+          {primaryTab === 'reports' && isAdmin && (
             <div className="main-content">
               <div className="section-header">
-                <h2>지점 발주 내역</h2>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {isAdmin && (
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setShowReportGenerator(true)}
-                    >
-                      <FileText size={18} />
-                      보고서 생성
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setShowOrderForm(true)}
-                  >
-                    <ShoppingCart size={18} />
-                    지점 주문 입력
-                  </button>
-                </div>
-              </div>
-              <div style={{ marginBottom: '16px' }}>
+                <h2>보고서</h2>
                 <button
                   className="btn btn-primary"
-                  onClick={() => setShowProcessingModal(true)}
+                  onClick={() => setShowReportGenerator(true)}
                 >
-                  <Package size={18} />
-                  발주 처리
+                  <Receipt size={18} />
+                  보고서 생성
                 </button>
               </div>
-              <OrderListWithTabs
-                orders={orders}
-                items={items}
-                currentUser={currentUser}
-                onStatusUpdate={handleOrderStatusUpdate}
-                onViewDetail={handleViewOrderDetail}
-                onProcess={handleProcessOrder}
-                onShip={handleShipOrder}
-                onReceive={handleReceiveOrder}
-                calculateConsumption={(finishedItemId, quantity) => {
-                  const consumptions = calculateMaterialConsumption(finishedItemId, quantity);
-                  return consumptions.map(c => ({
-                    materialName: c.materialName,
-                    quantity: c.requiredQuantity,
-                  }));
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === 'branches' && (
-            <div className="main-content">
-              <BranchManagement
-                branchShortages={branchShortages}
-                orders={orders}
-                items={items}
-                onBranchClick={setSelectedBranchShortage}
-                onBranchDetail={setSelectedBranchForDetail}
-              />
-            </div>
-          )}
-
-          {activeTab === 'material-orders' && isAdmin && (
-            <div className="main-content">
-              <div className="section-header">
-                <h2>부자재 발주 내역</h2>
-              </div>
-              <MaterialOrderManagement
-                materialOrders={materialOrders}
-                materialItems={materialItems}
-                onAddOrder={handleAddMaterialOrder}
-                onUpdateOrder={handleUpdateMaterialOrder}
-                onDeleteOrder={handleDeleteMaterialOrder}
-                onSyncCatalog={handleSyncCatalog}
-              />
-            </div>
-          )}
-
-          {activeTab === 'material-orders-summary' && isAdmin && (
-            <div className="main-content">
-              <div className="section-header">
-                <h2>부자재 발주 요약</h2>
-              </div>
-              <MaterialOrderSummary
-                materialOrders={materialOrders}
-                materialItems={materialItems}
-              />
+              <p className="empty-state">기간을 선택해 엑셀로 다운로드하세요.</p>
             </div>
           )}
         </div>
@@ -727,7 +841,10 @@ function App() {
       {showItemForm && (
         <ItemForm
           item={editingItem}
-          defaultType={activeTab === 'finished' ? 'finished' : activeTab === 'material' ? 'material' : undefined}
+          defaultType={inventoryTab === 'finished' ? 'finished' : inventoryTab === 'material' ? 'material' : undefined}
+          branches={branchNames}
+          defaultBranchName={isAdmin ? '본사' : currentUser?.branchName}
+          isAdmin={isAdmin}
           onSubmit={handleAddItem}
           onCancel={() => {
             setShowItemForm(false);
@@ -762,7 +879,7 @@ function App() {
 
       {showOrderForm && (
         <OrderForm
-          finishedItems={finishedItems}
+          finishedItems={isAdmin ? finishedItems : branchFinishedItems}
           branches={branchNames}
           onProcess={handleAddOrder}
           consumptionResults={orderConsumptions}

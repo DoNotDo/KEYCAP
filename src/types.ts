@@ -7,6 +7,7 @@ export interface InventoryItem {
   imageUrl?: string; // 이미지 URL
   category: string;
   type: ItemType; // 재고 타입 추가
+  branchName?: string; // 지점별 재고 구분
   quantity: number;
   minQuantity: number;
   maxQuantity: number;
@@ -123,6 +124,15 @@ export interface BranchShortage {
   }>;
   orders: Order[];
   totalShortageCount: number;
+}
+
+// 지점 특이사항/요청사항
+export interface BranchNote {
+  id: string;
+  branchName: string;
+  notes: string;
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 // 소모 내역 (발주 처리 시 기록)

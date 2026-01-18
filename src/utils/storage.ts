@@ -13,7 +13,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
 
 // Firestore 컬렉션 이름
 const COLLECTIONS = {
@@ -23,6 +23,7 @@ const COLLECTIONS = {
   ORDERS: 'orders',
   CONSUMPTIONS: 'consumptions',
   MATERIAL_ORDERS: 'materialOrders',
+  BRANCH_NOTES: 'branchNotes',
 };
 
 // 실시간 리스너 관리
@@ -51,6 +52,7 @@ const migrateFromLocalStorage = async () => {
     const localTransactions = localStorage.getItem('inventory_transactions');
     const localConsumptions = localStorage.getItem('inventory_consumptions');
     const localMaterialOrders = localStorage.getItem('inventory_material_orders');
+    const localBranchNotes = localStorage.getItem('inventory_branch_notes');
 
     const batch = writeBatch(db);
 
@@ -154,6 +156,22 @@ const migrateFromLocalStorage = async () => {
       }
     }
 
+    // Branch Notes 마이그레이션
+    if (localBranchNotes) {
+      try {
+        const branchNotes: BranchNote[] = JSON.parse(localBranchNotes);
+        branchNotes.forEach(note => {
+          const noteRef = doc(db, COLLECTIONS.BRANCH_NOTES, note.id || note.branchName);
+          batch.set(noteRef, {
+            ...note,
+            updatedAt: Timestamp.fromDate(new Date(note.updatedAt)),
+          });
+        });
+      } catch (e) {
+        console.error('Error migrating branch notes:', e);
+      }
+    }
+
     await batch.commit();
     localStorage.setItem(migrationKey, 'true');
     console.log('데이터 마이그레이션 완료');
@@ -172,6 +190,7 @@ let bomCache: BOMItem[] = [];
 let ordersCache: Order[] = [];
 let consumptionsCache: ConsumptionRecord[] = [];
 let materialOrdersCache: MaterialOrder[] = [];
+let branchNotesCache: BranchNote[] = [];
 let isInitialized = false;
 
 // 초기 데이터 로드
@@ -185,6 +204,7 @@ const initializeData = async () => {
     ordersCache = await getOrdersFromFirestore();
     consumptionsCache = await getConsumptionsFromFirestore();
     materialOrdersCache = await getMaterialOrdersFromFirestore();
+    branchNotesCache = await getBranchNotesFromFirestore();
     isInitialized = true;
   } catch (error) {
     console.error('초기화 오류:', error);
@@ -295,6 +315,23 @@ const getMaterialOrdersFromFirestore = async (): Promise<MaterialOrder[]> => {
     });
   } catch (error) {
     console.error('Error getting material orders:', error);
+    return [];
+  }
+};
+
+const getBranchNotesFromFirestore = async (): Promise<BranchNote[]> => {
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.BRANCH_NOTES));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+      } as BranchNote;
+    });
+  } catch (error) {
+    console.error('Error getting branch notes:', error);
     return [];
   }
 };
@@ -597,6 +634,57 @@ export const storage = {
     }
   },
 
+  // Branch Notes
+  getBranchNotes: (): BranchNote[] => {
+    return branchNotesCache;
+  },
+
+  getBranchNotesAsync: async (): Promise<BranchNote[]> => {
+    const notes = await getBranchNotesFromFirestore();
+    branchNotesCache = notes;
+    return notes;
+  },
+
+  subscribeBranchNotes: (callback: (notes: BranchNote[]) => void): (() => void) => {
+    const q = query(collection(db, COLLECTIONS.BRANCH_NOTES));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notes = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as BranchNote;
+      });
+      branchNotesCache = notes;
+      callback(notes);
+    }, (error) => {
+      console.error('Error subscribing to branch notes:', error);
+    });
+    listeners['branchNotes'] = unsubscribe;
+    return unsubscribe;
+  },
+
+  saveBranchNote: async (note: BranchNote): Promise<void> => {
+    try {
+      const noteId = note.id || note.branchName;
+      const noteRef = doc(db, COLLECTIONS.BRANCH_NOTES, noteId);
+      await setDoc(noteRef, {
+        ...note,
+        updatedAt: Timestamp.fromDate(new Date(note.updatedAt)),
+      });
+      const index = branchNotesCache.findIndex(n => n.id === noteId);
+      if (index !== -1) {
+        branchNotesCache[index] = note;
+      } else {
+        branchNotesCache = [...branchNotesCache, note];
+      }
+    } catch (error) {
+      console.error('Error saving branch note:', error);
+      throw error;
+    }
+  },
+
   // Consumption Records
   getConsumptions: (): ConsumptionRecord[] => {
     return consumptionsCache;
@@ -633,6 +721,7 @@ export const storage = {
         COLLECTIONS.ORDERS,
         COLLECTIONS.CONSUMPTIONS,
         COLLECTIONS.MATERIAL_ORDERS,
+        COLLECTIONS.BRANCH_NOTES,
       ];
       for (const coll of collections) {
         const snapshot = await getDocs(collection(db, coll));
@@ -649,6 +738,7 @@ export const storage = {
       ordersCache = [];
       consumptionsCache = [];
       materialOrdersCache = [];
+      branchNotesCache = [];
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;
@@ -669,5 +759,6 @@ export const storage = {
     ordersCache = await getOrdersFromFirestore();
     consumptionsCache = await getConsumptionsFromFirestore();
     materialOrdersCache = await getMaterialOrdersFromFirestore();
+    branchNotesCache = await getBranchNotesFromFirestore();
   },
 };
