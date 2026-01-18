@@ -25,8 +25,10 @@ KEYCAPS/
 ├── package.json           # 프로젝트 설정
 ├── vite.config.ts         # Vite 빌드 설정
 ├── README.md              # 프로젝트 문서
-├── SETUP_GUIDE.md         # 설정 가이드
-└── DEPLOY_GUIDE.md        # 배포 가이드
+└── docs/                  # 문서 폴더
+    ├── setup/             # 설정 관련 문서
+    ├── deployment/        # 배포 관련 문서
+    └── development/       # 개발 관련 문서
 ```
 
 ## 🔑 중요 파일
@@ -41,8 +43,9 @@ KEYCAPS/
 
 ### 문서
 - `README.md` - 프로젝트 개요 및 사용법
-- `SETUP_GUIDE.md` - 환경 설정 가이드
-- `DEPLOY_GUIDE.md` - 배포 가이드
+- `docs/setup/` - 환경 설정 및 서버 실행 가이드
+- `docs/deployment/` - 배포 및 Firestore 규칙 가이드
+- `docs/development/` - 프로젝트 구조 및 기여 가이드
 
 ## ⚠️ 주의사항
 

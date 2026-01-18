@@ -181,9 +181,21 @@ npm run build
 
 이 프로젝트는 내부 사용을 위한 것입니다.
 
+## 📚 추가 문서
+
+자세한 가이드는 다음 문서를 참고하세요:
+
+- **[설정 가이드](docs/setup/SETUP_GUIDE.md)** - 환경 설정 및 작업 흐름
+- **[서버 실행 가이드](docs/setup/START_SERVER.md)** - 개발 서버 실행 방법
+- **[배포 가이드](docs/deployment/DEPLOY_GUIDE.md)** - Firebase/Vercel 배포 방법
+- **[Firestore 규칙](docs/deployment/FIRESTORE_RULES.md)** - 보안 규칙 설정
+- **[프로젝트 구조](docs/development/PROJECT_STRUCTURE.md)** - 상세 프로젝트 구조
+- **[기여 가이드](docs/development/CONTRIBUTING.md)** - 기여 방법 및 규칙
+
 ## 👥 기여
 
 프로젝트를 포크하고 브랜치를 생성한 후 변경사항을 커밋하고 푸시하세요.
+자세한 내용은 [기여 가이드](docs/development/CONTRIBUTING.md)를 참고하세요.
 
 ---
 
