@@ -25,6 +25,7 @@ import { ReportGenerator } from './components/ReportGenerator';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { OrderProcessingModal } from './components/OrderProcessingModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
+import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt } from 'lucide-react';
 import './App.css';
@@ -62,6 +63,7 @@ function App() {
     updateOrder,
     addMaterialOrder,
     updateMaterialOrder,
+    deleteMaterialOrder,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,
@@ -232,6 +234,30 @@ function App() {
       ...updates,
       updatedBy: currentUser?.username,
     });
+  };
+
+  const handleDeleteMaterialOrder = (orderId: string) => {
+    deleteMaterialOrder(orderId);
+  };
+
+  const handleSyncCatalog = async () => {
+    try {
+      const catalogItems = await fetchCatalogItems();
+      const existingSku = new Set(items.map(item => item.sku).filter(Boolean));
+      const existingNames = new Set(items.map(item => item.name));
+      let addedCount = 0;
+
+      for (const catalogItem of catalogItems) {
+        const alreadyExists = (catalogItem.sku && existingSku.has(catalogItem.sku)) || existingNames.has(catalogItem.name);
+        if (alreadyExists) continue;
+        await addItem(mapCatalogToInventoryItem(catalogItem));
+        addedCount += 1;
+      }
+
+      alert(`카탈로그 동기화 완료: ${addedCount}개 추가`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '카탈로그 동기화 중 오류가 발생했습니다.');
+    }
   };
 
   const handleOrderStatusUpdate = (orderId: string, status: Order['status'], notes?: string) => {
@@ -675,6 +701,8 @@ function App() {
                 materialItems={materialItems}
                 onAddOrder={handleAddMaterialOrder}
                 onUpdateOrder={handleUpdateMaterialOrder}
+                onDeleteOrder={handleDeleteMaterialOrder}
+                onSyncCatalog={handleSyncCatalog}
               />
             </div>
           )}

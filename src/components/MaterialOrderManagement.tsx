@@ -7,6 +7,8 @@ interface MaterialOrderManagementProps {
   materialItems: InventoryItem[];
   onAddOrder: (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateOrder: (orderId: string, updates: Partial<MaterialOrder>) => void;
+  onDeleteOrder: (orderId: string) => void;
+  onSyncCatalog?: () => void;
 }
 
 const statusLabels: Record<MaterialOrderStatus, string> = {
@@ -18,15 +20,19 @@ const statusLabels: Record<MaterialOrderStatus, string> = {
 };
 
 const statusOptions: MaterialOrderStatus[] = ['planned', 'ordered', 'partial', 'received', 'cancelled'];
+const createStatusOptions: MaterialOrderStatus[] = ['planned', 'ordered', 'partial', 'received'];
+const inProgressStatuses: MaterialOrderStatus[] = ['planned', 'ordered', 'partial'];
 
 export const MaterialOrderManagement = ({
   materialOrders,
   materialItems,
   onAddOrder,
   onUpdateOrder,
+  onDeleteOrder,
+  onSyncCatalog,
 }: MaterialOrderManagementProps) => {
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState<MaterialOrderStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<MaterialOrderStatus | 'all' | 'in-progress'>('in-progress');
   const [searchTerm, setSearchTerm] = useState('');
 
   const [formValues, setFormValues] = useState({
@@ -56,7 +62,13 @@ export const MaterialOrderManagement = ({
   const filteredOrders = useMemo(() => {
     return materialOrders
       .filter(order => (categoryFilter === 'all' ? true : order.category === categoryFilter))
-      .filter(order => (statusFilter === 'all' ? true : order.status === statusFilter))
+      .filter(order => {
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'in-progress') {
+          return inProgressStatuses.includes(order.status);
+        }
+        return order.status === statusFilter;
+      })
       .filter(order => {
         if (!searchTerm) return true;
         const name = getMaterialName(order.materialItemId);
@@ -111,6 +123,13 @@ export const MaterialOrderManagement = ({
   };
 
   const handleStatusChange = (orderId: string, status: MaterialOrderStatus) => {
+    if (status === 'cancelled') {
+      const ok = confirm('발주 내역을 취소하면 삭제됩니다. 진행할까요?');
+      if (ok) {
+        onDeleteOrder(orderId);
+      }
+      return;
+    }
     onUpdateOrder(orderId, {
       status,
       updatedAt: new Date().toISOString(),
@@ -141,12 +160,11 @@ export const MaterialOrderManagement = ({
           <select
             className="form-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as MaterialOrderStatus | 'all')}
+            onChange={(e) => setStatusFilter(e.target.value as MaterialOrderStatus | 'all' | 'in-progress')}
           >
-            <option value="all">전체 상태</option>
-            {statusOptions.map(status => (
-              <option key={status} value={status}>{statusLabels[status]}</option>
-            ))}
+            <option value="in-progress">진행중</option>
+            <option value="received">입고완료</option>
+            <option value="all">전체</option>
           </select>
           <div className="search-box material-order-search">
             <input
@@ -156,6 +174,11 @@ export const MaterialOrderManagement = ({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {onSyncCatalog && (
+            <button className="btn btn-secondary btn-small" onClick={onSyncCatalog}>
+              카탈로그 동기화
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,7 +221,7 @@ export const MaterialOrderManagement = ({
               value={formValues.status}
               onChange={(e) => setFormValues({ ...formValues, status: e.target.value as MaterialOrderStatus })}
             >
-              {statusOptions.map(status => (
+              {createStatusOptions.map(status => (
                 <option key={status} value={status}>{statusLabels[status]}</option>
               ))}
             </select>

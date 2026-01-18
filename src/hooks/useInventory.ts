@@ -231,6 +231,11 @@ export const useInventory = () => {
     await storage.updateMaterialOrder(orderId, updates);
   }, [materialOrders]);
 
+  const deleteMaterialOrder = useCallback(async (orderId: string) => {
+    setMaterialOrders(prev => prev.filter(order => order.id !== orderId));
+    await storage.deleteMaterialOrder(orderId);
+  }, []);
+
   // 출고 처리
   const shipOrder = useCallback(async (orderId: string, shippedQuantity: number, shippedBy: string) => {
     const order = orders.find(o => o.id === orderId);
@@ -535,6 +540,7 @@ export const useInventory = () => {
     updateOrder,
     addMaterialOrder,
     updateMaterialOrder,
+    deleteMaterialOrder,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,

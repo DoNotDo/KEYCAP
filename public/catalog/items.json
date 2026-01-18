@@ -1,0 +1,15 @@
+[
+  {
+    "sku": "MAT-001",
+    "name": "스위치 스템",
+    "category": "스위치",
+    "type": "material",
+    "unit": "개",
+    "price": 120,
+    "minQuantity": 1000,
+    "maxQuantity": 5000,
+    "imageUrl": "/catalog/images/mat-001.png",
+    "description": "표준 스위치 스템",
+    "location": "A-01"
+  }
+]

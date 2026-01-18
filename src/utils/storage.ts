@@ -586,6 +586,17 @@ export const storage = {
     }
   },
 
+  deleteMaterialOrder: async (orderId: string): Promise<void> => {
+    try {
+      const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, orderId);
+      await deleteDoc(orderRef);
+      materialOrdersCache = materialOrdersCache.filter(order => order.id !== orderId);
+    } catch (error) {
+      console.error('Error deleting material order:', error);
+      throw error;
+    }
+  },
+
   // Consumption Records
   getConsumptions: (): ConsumptionRecord[] => {
     return consumptionsCache;

@@ -3,6 +3,8 @@ export type ItemType = 'finished' | 'material'; // 완성재고 | 부자재
 export interface InventoryItem {
   id: string;
   name: string;
+  sku?: string; // 상품 코드/번호
+  imageUrl?: string; // 이미지 URL
   category: string;
   type: ItemType; // 재고 타입 추가
   quantity: number;
