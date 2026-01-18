@@ -43,6 +43,27 @@ export interface Order {
   shippedQuantity?: number; // 출고된 수량
 }
 
+// 부자재 발주 상태
+export type MaterialOrderStatus = 'planned' | 'ordered' | 'partial' | 'received' | 'cancelled';
+
+// 부자재 발주 내역
+export interface MaterialOrder {
+  id: string;
+  materialItemId: string;
+  category: string;
+  quantity: number;
+  receivedQuantity?: number;
+  status: MaterialOrderStatus;
+  orderDate: string;
+  expectedDate?: string;
+  nextOrderDate?: string;
+  supplier?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
 // 부자재 소모량 계산 결과
 export interface MaterialConsumption {
   materialItemId: string;

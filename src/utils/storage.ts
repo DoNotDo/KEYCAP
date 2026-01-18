@@ -13,7 +13,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder } from '../types';
 
 // Firestore 컬렉션 이름
 const COLLECTIONS = {
@@ -22,6 +22,7 @@ const COLLECTIONS = {
   BOM: 'bom',
   ORDERS: 'orders',
   CONSUMPTIONS: 'consumptions',
+  MATERIAL_ORDERS: 'materialOrders',
 };
 
 // 실시간 리스너 관리
@@ -49,6 +50,7 @@ const migrateFromLocalStorage = async () => {
     const localOrders = localStorage.getItem('inventory_orders');
     const localTransactions = localStorage.getItem('inventory_transactions');
     const localConsumptions = localStorage.getItem('inventory_consumptions');
+    const localMaterialOrders = localStorage.getItem('inventory_material_orders');
 
     const batch = writeBatch(db);
 
@@ -132,6 +134,26 @@ const migrateFromLocalStorage = async () => {
       }
     }
 
+    // Material Orders 마이그레이션
+    if (localMaterialOrders) {
+      try {
+        const materialOrders: MaterialOrder[] = JSON.parse(localMaterialOrders);
+        materialOrders.forEach(order => {
+          const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, order.id);
+          batch.set(orderRef, {
+            ...order,
+            orderDate: Timestamp.fromDate(new Date(order.orderDate)),
+            expectedDate: order.expectedDate ? Timestamp.fromDate(new Date(order.expectedDate)) : null,
+            nextOrderDate: order.nextOrderDate ? Timestamp.fromDate(new Date(order.nextOrderDate)) : null,
+            createdAt: Timestamp.fromDate(new Date(order.createdAt)),
+            updatedAt: Timestamp.fromDate(new Date(order.updatedAt)),
+          });
+        });
+      } catch (e) {
+        console.error('Error migrating material orders:', e);
+      }
+    }
+
     await batch.commit();
     localStorage.setItem(migrationKey, 'true');
     console.log('데이터 마이그레이션 완료');
@@ -149,6 +171,7 @@ let transactionsCache: Transaction[] = [];
 let bomCache: BOMItem[] = [];
 let ordersCache: Order[] = [];
 let consumptionsCache: ConsumptionRecord[] = [];
+let materialOrdersCache: MaterialOrder[] = [];
 let isInitialized = false;
 
 // 초기 데이터 로드
@@ -161,6 +184,7 @@ const initializeData = async () => {
     bomCache = await getBOMFromFirestore();
     ordersCache = await getOrdersFromFirestore();
     consumptionsCache = await getConsumptionsFromFirestore();
+    materialOrdersCache = await getMaterialOrdersFromFirestore();
     isInitialized = true;
   } catch (error) {
     console.error('초기화 오류:', error);
@@ -250,6 +274,27 @@ const getConsumptionsFromFirestore = async (): Promise<ConsumptionRecord[]> => {
     });
   } catch (error) {
     console.error('Error getting consumptions:', error);
+    return [];
+  }
+};
+
+const getMaterialOrdersFromFirestore = async (): Promise<MaterialOrder[]> => {
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.MATERIAL_ORDERS));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        orderDate: data.orderDate?.toDate?.().toISOString() || data.orderDate,
+        expectedDate: data.expectedDate?.toDate?.().toISOString() || data.expectedDate,
+        nextOrderDate: data.nextOrderDate?.toDate?.().toISOString() || data.nextOrderDate,
+        createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+      } as MaterialOrder;
+    });
+  } catch (error) {
+    console.error('Error getting material orders:', error);
     return [];
   }
 };
@@ -454,6 +499,93 @@ export const storage = {
     }
   },
 
+  // Material Orders
+  getMaterialOrders: (): MaterialOrder[] => {
+    return materialOrdersCache;
+  },
+
+  getMaterialOrdersAsync: async (): Promise<MaterialOrder[]> => {
+    const materialOrders = await getMaterialOrdersFromFirestore();
+    materialOrdersCache = materialOrders;
+    return materialOrders;
+  },
+
+  subscribeMaterialOrders: (callback: (orders: MaterialOrder[]) => void): (() => void) => {
+    const q = query(collection(db, COLLECTIONS.MATERIAL_ORDERS));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          orderDate: data.orderDate?.toDate?.().toISOString() || data.orderDate,
+          expectedDate: data.expectedDate?.toDate?.().toISOString() || data.expectedDate,
+          nextOrderDate: data.nextOrderDate?.toDate?.().toISOString() || data.nextOrderDate,
+          createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as MaterialOrder;
+      });
+      materialOrdersCache = orders;
+      callback(orders);
+    }, (error) => {
+      console.error('Error subscribing to material orders:', error);
+    });
+    listeners['materialOrders'] = unsubscribe;
+    return unsubscribe;
+  },
+
+  saveMaterialOrder: async (order: MaterialOrder): Promise<void> => {
+    try {
+      const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, order.id);
+      await setDoc(orderRef, {
+        ...order,
+        orderDate: Timestamp.fromDate(new Date(order.orderDate)),
+        expectedDate: order.expectedDate ? Timestamp.fromDate(new Date(order.expectedDate)) : null,
+        nextOrderDate: order.nextOrderDate ? Timestamp.fromDate(new Date(order.nextOrderDate)) : null,
+        createdAt: Timestamp.fromDate(new Date(order.createdAt)),
+        updatedAt: Timestamp.fromDate(new Date(order.updatedAt)),
+      });
+      materialOrdersCache = [...materialOrdersCache, order];
+    } catch (error) {
+      console.error('Error saving material order:', error);
+      throw error;
+    }
+  },
+
+  updateMaterialOrder: async (orderId: string, updates: Partial<MaterialOrder>): Promise<void> => {
+    try {
+      const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, orderId);
+      const updateData: any = { ...updates };
+      if (updates.orderDate) {
+        updateData.orderDate = Timestamp.fromDate(new Date(updates.orderDate));
+      }
+      if (updates.expectedDate === '') {
+        updateData.expectedDate = null;
+      } else if (updates.expectedDate) {
+        updateData.expectedDate = Timestamp.fromDate(new Date(updates.expectedDate));
+      }
+      if (updates.nextOrderDate === '') {
+        updateData.nextOrderDate = null;
+      } else if (updates.nextOrderDate) {
+        updateData.nextOrderDate = Timestamp.fromDate(new Date(updates.nextOrderDate));
+      }
+      if (updates.createdAt) {
+        updateData.createdAt = Timestamp.fromDate(new Date(updates.createdAt));
+      }
+      if (updates.updatedAt) {
+        updateData.updatedAt = Timestamp.fromDate(new Date(updates.updatedAt));
+      }
+      await updateDoc(orderRef, updateData);
+      const index = materialOrdersCache.findIndex(o => o.id === orderId);
+      if (index !== -1) {
+        materialOrdersCache[index] = { ...materialOrdersCache[index], ...updates };
+      }
+    } catch (error) {
+      console.error('Error updating material order:', error);
+      throw error;
+    }
+  },
+
   // Consumption Records
   getConsumptions: (): ConsumptionRecord[] => {
     return consumptionsCache;
@@ -489,6 +621,7 @@ export const storage = {
         COLLECTIONS.BOM,
         COLLECTIONS.ORDERS,
         COLLECTIONS.CONSUMPTIONS,
+        COLLECTIONS.MATERIAL_ORDERS,
       ];
       for (const coll of collections) {
         const snapshot = await getDocs(collection(db, coll));
@@ -504,6 +637,7 @@ export const storage = {
       bomCache = [];
       ordersCache = [];
       consumptionsCache = [];
+      materialOrdersCache = [];
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;
@@ -523,5 +657,6 @@ export const storage = {
     bomCache = await getBOMFromFirestore();
     ordersCache = await getOrdersFromFirestore();
     consumptionsCache = await getConsumptionsFromFirestore();
+    materialOrdersCache = await getMaterialOrdersFromFirestore();
   },
 };

@@ -24,6 +24,7 @@ import { ConsumptionHistory } from './components/ConsumptionHistory';
 import { ReportGenerator } from './components/ReportGenerator';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { OrderProcessingModal } from './components/OrderProcessingModal';
+import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt } from 'lucide-react';
 import './App.css';
@@ -46,6 +47,7 @@ function App() {
     transactions,
     bomItems,
     orders,
+    materialOrders,
     loading,
     addItem,
     updateItem,
@@ -58,6 +60,8 @@ function App() {
     getBOMByFinishedItem,
     addOrder,
     updateOrder,
+    addMaterialOrder,
+    updateMaterialOrder,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,
@@ -214,6 +218,20 @@ function App() {
     setShowOrderForm(false);
     setOrderFinishedItemId('');
     setOrderQuantity(0);
+  };
+
+  const handleAddMaterialOrder = (order: Parameters<typeof addMaterialOrder>[0]) => {
+    addMaterialOrder({
+      ...order,
+      updatedBy: currentUser?.username,
+    });
+  };
+
+  const handleUpdateMaterialOrder = (orderId: string, updates: Parameters<typeof updateMaterialOrder>[1]) => {
+    updateMaterialOrder(orderId, {
+      ...updates,
+      updatedBy: currentUser?.username,
+    });
   };
 
   const handleOrderStatusUpdate = (orderId: string, status: Order['status'], notes?: string) => {
@@ -407,6 +425,7 @@ function App() {
             { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
             { id: 'finished', label: '완성재고', icon: <Box size={20} /> },
             { id: 'material', label: '부자재', icon: <Wrench size={20} /> },
+            { id: 'material-orders', label: '부자재 발주', icon: <FileText size={20} /> },
             { id: 'orders', label: '발주', icon: <FileText size={20} /> },
             { id: 'branches', label: '지점', icon: <MapPin size={20} /> },
           ] : [
@@ -651,9 +670,12 @@ function App() {
               <div className="section-header">
                 <h2>부자재 발주 내역</h2>
               </div>
-              <p style={{ padding: '20px', color: '#5f6368' }}>
-                부자재 발주 내역 기능은 추후 구현 예정입니다.
-              </p>
+              <MaterialOrderManagement
+                materialOrders={materialOrders}
+                materialItems={materialItems}
+                onAddOrder={handleAddMaterialOrder}
+                onUpdateOrder={handleUpdateMaterialOrder}
+              />
             </div>
           )}
         </div>

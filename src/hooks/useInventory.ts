@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, ItemType, BranchShortage, ConsumptionRecord } from '../types';
+import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, ItemType, BranchShortage, ConsumptionRecord, MaterialOrder } from '../types';
 import { storage } from '../utils/storage';
 
 export const useInventory = () => {
@@ -8,6 +8,7 @@ export const useInventory = () => {
   const [bomItems, setBomItems] = useState<BOMItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [consumptions, setConsumptions] = useState<ConsumptionRecord[]>([]);
+  const [materialOrders, setMaterialOrders] = useState<MaterialOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,11 +24,13 @@ export const useInventory = () => {
       const loadedBOM = await storage.getBOMAsync();
       const loadedOrders = await storage.getOrdersAsync();
       const loadedConsumptions = await storage.getConsumptionsAsync();
+      const loadedMaterialOrders = await storage.getMaterialOrdersAsync();
       setItems(loadedItems);
       setTransactions(loadedTransactions);
       setBomItems(loadedBOM);
       setOrders(loadedOrders);
       setConsumptions(loadedConsumptions);
+      setMaterialOrders(loadedMaterialOrders);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
       // 오류 발생 시 캐시된 데이터 사용
@@ -36,11 +39,13 @@ export const useInventory = () => {
       const loadedBOM = storage.getBOM();
       const loadedOrders = storage.getOrders();
       const loadedConsumptions = storage.getConsumptions();
+      const loadedMaterialOrders = storage.getMaterialOrders();
       setItems(loadedItems);
       setTransactions(loadedTransactions);
       setBomItems(loadedBOM);
       setOrders(loadedOrders);
       setConsumptions(loadedConsumptions);
+      setMaterialOrders(loadedMaterialOrders);
     } finally {
       setLoading(false);
     }
@@ -202,6 +207,29 @@ export const useInventory = () => {
     setOrders(updatedOrders);
     await storage.updateOrder(orderId, updates);
   }, [orders]);
+
+  // 부자재 발주 관리
+  const addMaterialOrder = useCallback(async (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newOrder: MaterialOrder = {
+      ...order,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updatedOrders = [...materialOrders, newOrder];
+    setMaterialOrders(updatedOrders);
+    await storage.saveMaterialOrder(newOrder);
+    return newOrder;
+  }, [materialOrders]);
+
+  const updateMaterialOrder = useCallback(async (orderId: string, updates: Partial<MaterialOrder>) => {
+    const updatedOrders = materialOrders.map(order =>
+      order.id === orderId ? { ...order, ...updates } : order
+    );
+    setMaterialOrders(updatedOrders);
+    await storage.updateMaterialOrder(orderId, updates);
+  }, [materialOrders]);
 
   // 출고 처리
   const shipOrder = useCallback(async (orderId: string, shippedQuantity: number, shippedBy: string) => {
@@ -492,6 +520,7 @@ export const useInventory = () => {
     transactions,
     bomItems,
     orders,
+    materialOrders,
     loading,
     addItem,
     updateItem,
@@ -504,6 +533,8 @@ export const useInventory = () => {
     getBOMByFinishedItem,
     addOrder,
     updateOrder,
+    addMaterialOrder,
+    updateMaterialOrder,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,

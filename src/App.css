@@ -1186,6 +1186,209 @@
   color: var(--color-text-tertiary);
 }
 
+/* 부자재 발주 내역 */
+.material-order-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+}
+
+.material-order-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.material-order-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: center;
+  width: 100%;
+}
+
+.material-order-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.material-order-search input {
+  width: 100%;
+}
+
+.material-order-form {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+.material-order-form h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-2xl);
+  margin-bottom: var(--spacing-xl);
+  color: var(--color-text-primary);
+}
+
+.material-order-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.material-order-actions {
+  justify-content: flex-start;
+}
+
+.material-order-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.material-order-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.material-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.material-order-card {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.material-order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.material-order-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.material-order-info strong {
+  font-size: var(--font-xl);
+  color: var(--color-text-primary);
+}
+
+.material-order-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-md);
+}
+
+.material-order-status .form-select {
+  min-width: 140px;
+}
+
+.material-order-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-md);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-bg-tertiary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.material-order-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.material-order-details .detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.material-order-details .label {
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}
+
+.material-order-details .value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.material-order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-text-quaternary);
+  font-size: var(--font-sm);
+}
+
+.updated-at {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px var(--spacing-sm);
+  border-radius: 999px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.status-chip.success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
 /* 빈 상태 */
 .empty-state {
   text-align: center;
@@ -1596,6 +1799,35 @@
   
   .order-actions .btn {
     width: 100%;
+  }
+
+  /* 부자재 발주 */
+  .material-order-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .material-order-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .material-order-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .material-order-status .form-select {
+    width: 100%;
+  }
+
+  .material-order-details {
+    grid-template-columns: 1fr;
+  }
+
+  .material-order-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
   }
   
   /* 텍스트 정리 */

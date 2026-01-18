@@ -12,7 +12,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder } from '../types';
 
 // Firestore 컬렉션 이름
 const COLLECTIONS = {
@@ -21,6 +21,7 @@ const COLLECTIONS = {
   BOM: 'bom',
   ORDERS: 'orders',
   CONSUMPTIONS: 'consumptions',
+  MATERIAL_ORDERS: 'materialOrders',
 };
 
 // 실시간 리스너 관리
@@ -204,6 +205,98 @@ export const storage = {
       await updateDoc(orderRef, updateData);
     } catch (error) {
       console.error('Error updating order:', error);
+      throw error;
+    }
+  },
+
+  // Material Orders
+  getMaterialOrders: async (): Promise<MaterialOrder[]> => {
+    try {
+      const snapshot = await getDocs(collection(db, COLLECTIONS.MATERIAL_ORDERS));
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          orderDate: data.orderDate?.toDate?.().toISOString() || data.orderDate,
+          expectedDate: data.expectedDate?.toDate?.().toISOString() || data.expectedDate,
+          nextOrderDate: data.nextOrderDate?.toDate?.().toISOString() || data.nextOrderDate,
+          createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as MaterialOrder;
+      });
+    } catch (error) {
+      console.error('Error getting material orders:', error);
+      return [];
+    }
+  },
+
+  subscribeMaterialOrders: (callback: (orders: MaterialOrder[]) => void): (() => void) => {
+    const q = query(collection(db, COLLECTIONS.MATERIAL_ORDERS));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          orderDate: data.orderDate?.toDate?.().toISOString() || data.orderDate,
+          expectedDate: data.expectedDate?.toDate?.().toISOString() || data.expectedDate,
+          nextOrderDate: data.nextOrderDate?.toDate?.().toISOString() || data.nextOrderDate,
+          createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+        } as MaterialOrder;
+      });
+      callback(orders);
+    }, (error) => {
+      console.error('Error subscribing to material orders:', error);
+    });
+    listeners['materialOrders'] = unsubscribe;
+    return unsubscribe;
+  },
+
+  saveMaterialOrder: async (order: MaterialOrder): Promise<void> => {
+    try {
+      const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, order.id);
+      await setDoc(orderRef, {
+        ...order,
+        orderDate: Timestamp.fromDate(new Date(order.orderDate)),
+        expectedDate: order.expectedDate ? Timestamp.fromDate(new Date(order.expectedDate)) : null,
+        nextOrderDate: order.nextOrderDate ? Timestamp.fromDate(new Date(order.nextOrderDate)) : null,
+        createdAt: Timestamp.fromDate(new Date(order.createdAt)),
+        updatedAt: Timestamp.fromDate(new Date(order.updatedAt)),
+      });
+    } catch (error) {
+      console.error('Error saving material order:', error);
+      throw error;
+    }
+  },
+
+  updateMaterialOrder: async (orderId: string, updates: Partial<MaterialOrder>): Promise<void> => {
+    try {
+      const orderRef = doc(db, COLLECTIONS.MATERIAL_ORDERS, orderId);
+      const updateData: any = { ...updates };
+      if (updates.orderDate) {
+        updateData.orderDate = Timestamp.fromDate(new Date(updates.orderDate));
+      }
+      if (updates.expectedDate === '') {
+        updateData.expectedDate = null;
+      } else if (updates.expectedDate) {
+        updateData.expectedDate = Timestamp.fromDate(new Date(updates.expectedDate));
+      }
+      if (updates.nextOrderDate === '') {
+        updateData.nextOrderDate = null;
+      } else if (updates.nextOrderDate) {
+        updateData.nextOrderDate = Timestamp.fromDate(new Date(updates.nextOrderDate));
+      }
+      if (updates.createdAt) {
+        updateData.createdAt = Timestamp.fromDate(new Date(updates.createdAt));
+      }
+      if (updates.updatedAt) {
+        updateData.updatedAt = Timestamp.fromDate(new Date(updates.updatedAt));
+      }
+      await updateDoc(orderRef, updateData);
+    } catch (error) {
+      console.error('Error updating material order:', error);
       throw error;
     }
   },
