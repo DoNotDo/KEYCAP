@@ -12,7 +12,6 @@ import { MaterialConsumptionPanel } from './components/MaterialConsumptionPanel'
 import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { BranchShortageDetail } from './components/BranchShortageDetail';
-import { OrderList } from './components/OrderList';
 import { OrderListWithTabs } from './components/OrderListWithTabs';
 import { OrderDetailModal } from './components/OrderDetailModal';
 import { TabNavigation } from './components/TabNavigation';

@@ -4,7 +4,7 @@
 
 1. 저장소 클론
 2. `npm install` 실행
-3. `.env.example`을 복사하여 `.env` 생성
+3. `.env` 생성
 4. Firebase 설정 정보 입력
 5. `npm run dev` 실행
 

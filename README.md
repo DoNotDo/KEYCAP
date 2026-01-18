@@ -36,13 +36,7 @@ npm install
 
 ### 3. 환경 변수 설정
 
-`.env.example` 파일을 복사하여 `.env` 파일을 생성하고 Firebase 설정 정보를 입력하세요:
-
-```bash
-cp .env.example .env
-```
-
-`.env` 파일을 열고 Firebase Console에서 가져온 설정 정보를 입력:
+`.env` 파일을 생성하고 Firebase 설정 정보를 입력하세요:
 
 ```env
 VITE_FIREBASE_API_KEY=your_api_key_here
@@ -51,7 +45,6 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=981753652672
 VITE_FIREBASE_APP_ID=1:981753652672:web:9038dadd699022179cd425
-VITE_STORAGE_MODE=firebase
 ```
 
 ### 4. Firebase 설정
@@ -130,7 +123,7 @@ KEYCAPS/
 │   ├── App.tsx          # 메인 앱 컴포넌트
 │   └── main.tsx         # 진입점
 ├── public/              # 정적 파일
-├── .env.example         # 환경 변수 템플릿
+├── .env                # 환경 변수 (로컬에서 생성)
 ├── .gitignore          # Git 제외 파일
 ├── package.json        # 프로젝트 설정
 ├── vite.config.ts      # Vite 설정
@@ -176,7 +169,7 @@ KEYCAPS/
 ### 데이터가 보이지 않을 때
 - Firebase Console에서 Firestore Database 확인
 - `.env` 파일의 설정이 올바른지 확인
-- `VITE_STORAGE_MODE=firebase`로 설정되어 있는지 확인
+- Firebase 환경 변수 값이 정상인지 확인
 
 ### 빌드 오류
 ```bash

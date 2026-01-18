@@ -50,10 +50,7 @@ npm install
 
 #### 환경 변수 설정
 
-```bash
-# .env.example을 복사
-cp .env.example .env
-```
+`.env` 파일을 생성하고 Firebase 설정 정보를 입력하세요.
 
 `.env` 파일을 열고 Firebase 설정 정보를 입력하세요.
 (집에서 사용한 것과 동일한 Firebase 프로젝트 사용)
@@ -130,7 +127,7 @@ git push origin feature/new-feature
 
 1. **`.env` 파일은 절대 커밋하지 마세요**
    - `.gitignore`에 이미 포함되어 있습니다
-   - 각 환경에서 `.env.example`을 복사하여 설정하세요
+   - 각 환경에서 `.env`를 직접 생성하여 설정하세요
 
 2. **`node_modules`는 커밋하지 마세요**
    - `.gitignore`에 포함되어 있습니다
