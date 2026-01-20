@@ -30,7 +30,13 @@ if errorlevel 1 (
 
 :: 변경사항이 있는지 확인
 git diff --quiet && git diff --cached --quiet
-if errorlevel 1 (
+set HAS_CHANGES=%errorlevel%
+
+:: 로컬 커밋이 원격보다 앞서 있는지 확인
+git rev-list --count origin/%CURRENT_BRANCH%..HEAD >nul 2>&1
+set AHEAD=%errorlevel%
+
+if %HAS_CHANGES% neq 0 (
     echo.
     echo 변경사항이 감지되었습니다.
     echo.
@@ -60,8 +66,13 @@ if errorlevel 1 (
     echo ✅ 커밋 완료
     echo.
 ) else (
-    echo 변경사항이 없습니다.
-    echo.
+    if %AHEAD% equ 0 (
+        echo 변경사항이 없습니다.
+        echo.
+    ) else (
+        echo 로컬에 커밋된 변경사항이 있습니다.
+        echo.
+    )
 )
 
 :: 원격 저장소 확인

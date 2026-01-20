@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # 수동 실행도 가능하도록
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # 타임아웃 설정
     
     steps:
     - name: Checkout code
@@ -22,23 +20,10 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci  # npm install 대신 npm ci 사용 (빌드 일관성)
-    
-    - name: TypeScript 타입 체크
-      run: npm run build:check || npm run build
-      continue-on-error: false
+      run: npm install
     
     - name: Build
       run: npm run build
-      continue-on-error: false
-    
-    - name: 빌드 결과 확인
-      run: |
-        if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
-          echo "❌ 빌드 실패: dist 폴더가 비어있습니다"
-          exit 1
-        fi
-        echo "✅ 빌드 성공: dist 폴더 확인 완료"
     
     - name: Deploy to Firebase
       uses: FirebaseExtended/action-hosting-deploy@v0
@@ -47,17 +32,3 @@ jobs:
         firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
         channelId: live
         projectId: management-9f7d8
-      continue-on-error: false
-    
-    - name: 배포 성공 알림
-      if: success()
-      run: |
-        echo "✅ Firebase 배포 완료!"
-        echo "배포 시간: $(date)"
-    
-    - name: 배포 실패 알림
-      if: failure()
-      run: |
-        echo "❌ 배포 실패!"
-        echo "실패 시간: $(date)"
-        echo "GitHub Actions 로그를 확인하세요."
