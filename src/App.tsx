@@ -622,7 +622,7 @@ function App() {
                   </button>
                 )}
               </div>
-              <div className="search-box" style={{ marginBottom: '20px' }}>
+              <div className="search-box">
                 <Search size={20} />
                 <input
                   type="text"
@@ -644,18 +644,18 @@ function App() {
                 searchTerm=""
               />
               {inventoryTab === 'finished' && isAdmin && (
-                <div style={{ marginTop: '32px' }}>
-                  <h3 style={{ marginBottom: '16px', color: '#1a73e8' }}>BOM 설정 현황</h3>
-                  <div style={{ display: 'grid', gap: '16px' }}>
+                <div className="bom-status-section">
+                  <h3>BOM 설정 현황</h3>
+                  <div className="bom-status-grid">
                     {finishedItems.map(item => {
                       const itemBOM = getBOMByFinishedItem(item.id);
                       return (
-                        <div key={item.id} style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h4 style={{ margin: 0, color: '#202124', fontSize: '18px', fontWeight: 600 }}>
+                        <div key={item.id} className="bom-status-card">
+                          <div className="bom-status-header">
+                            <h4 className="bom-status-title">
                               {item.name}
                               {itemBOM.length > 0 && (
-                                <span style={{ marginLeft: '8px', fontSize: '14px', color: '#1a73e8', fontWeight: 400 }}>
+                                <span className="bom-status-subtitle">
                                   ({itemBOM.length}개 부자재)
                                 </span>
                               )}
@@ -676,8 +676,8 @@ function App() {
                               materialItems={materialItems}
                             />
                           ) : (
-                            <div style={{ padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-                              <p style={{ color: '#9aa0a6', margin: 0, fontSize: '14px' }}>
+                            <div className="bom-empty-notice">
+                              <p>
                                 ⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.
                               </p>
                             </div>
@@ -689,7 +689,7 @@ function App() {
                 </div>
               )}
               {selectedItemForDetail && (
-                <div style={{ marginTop: '24px' }}>
+                <div className="detail-section">
                   <ConsumptionHistory
                     consumptions={consumptions}
                     items={items}
@@ -718,7 +718,7 @@ function App() {
                 <>
                   <div className="section-header">
                     <h2>지점 발주 내역</h2>
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="section-header-actions">
                       <button
                         className="btn btn-primary"
                         onClick={() => setShowOrderForm(true)}
@@ -726,10 +726,19 @@ function App() {
                         <ShoppingCart size={18} />
                         지점 주문 입력
                       </button>
+                      {isAdmin && (
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setShowReportGenerator(true)}
+                        >
+                          <FileText size={18} />
+                          보고서 생성
+                        </button>
+                      )}
                     </div>
                   </div>
                   {isAdmin && (
-                    <div style={{ marginBottom: '16px' }}>
+                    <div className="section-action-group">
                       <button
                         className="btn btn-primary"
                         onClick={() => setShowProcessingModal(true)}

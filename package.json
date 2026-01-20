@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "build:check": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && echo 배포 준비 완료! push-to-git.bat을 실행하세요.",
+    "deploy:check": "npm run build:check && echo 빌드 검증 완료!",
+    "git:status": "git status",
+    "git:pull": "git pull origin main",
+    "git:push": "echo push-to-git.bat 스크립트를 사용하세요"
   },
   "dependencies": {
     "firebase": "^12.7.0",

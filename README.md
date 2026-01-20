@@ -85,22 +85,53 @@ npm run build
 
 ## 🚢 배포
 
-### Firebase Hosting
+### 자동 배포 (권장) ⚡
+
+이 프로젝트는 **Git → GitHub Actions → Firebase** 자동 배포 파이프라인이 설정되어 있습니다.
+
+#### 빠른 배포 방법
+
+1. **Windows 사용자 (가장 쉬움)**
+   ```bash
+   # 상세 버전 (충돌 체크 포함)
+   push-to-git.bat
+   
+   # 또는 간단 버전
+   quick-push.bat
+   ```
+
+2. **수동 Git 명령어**
+   ```bash
+   git add .
+   git commit -m "수정 내용"
+   git pull origin main  # 충돌 방지
+   git push origin main
+   ```
+
+3. **배포 확인**
+   - GitHub 저장소 → Actions 탭에서 배포 상태 확인
+   - 약 1-2분 후 Firebase 사이트에서 변경사항 확인
+
+#### 자동 배포 프로세스
+
+```
+로컬 수정 → git push → GitHub → GitHub Actions → Firebase 배포
+```
+
+자세한 내용은 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) 참고
+
+### 수동 배포 (비권장)
+
+직접 Firebase에 배포하려면:
 
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase init hosting
 npm run build
 firebase deploy --only hosting
 ```
 
-### Vercel
-
-```bash
-npm install -g vercel
-vercel
-```
+⚠️ **주의**: 수동 배포는 Git과 동기화되지 않아 충돌이 발생할 수 있습니다.
 
 ## 👤 기본 계정
 
