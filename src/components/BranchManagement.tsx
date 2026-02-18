@@ -6,6 +6,7 @@ interface BranchManagementProps {
   orders: Order[];
   items: InventoryItem[];
   onBranchClick?: (branchShortage: BranchShortage) => void;
+  onBranchDetail?: (branchName: string) => void;
 }
 
 export const BranchManagement = ({ branchShortages, orders, items, onBranchClick, onBranchDetail }: BranchManagementProps) => {

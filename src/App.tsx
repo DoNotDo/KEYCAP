@@ -26,9 +26,11 @@ import { OrderProcessingModal } from './components/OrderProcessingModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { BranchNotes } from './components/BranchNotes';
+import { BranchStockReport } from './components/BranchStockReport';
+import { BRANCH_LIST } from './constants/branches';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
-import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -91,7 +93,7 @@ function App() {
   const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports'>('dashboard');
   const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
   const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'branch-orders'>('branch-orders');
-  const [branchTab, setBranchTab] = useState<'notes' | 'management'>('notes');
+  const [branchTab, setBranchTab] = useState<'notes' | 'management' | 'branch-report'>('notes');
   const [selectedStatsType, setSelectedStatsType] = useState<'totalItems' | 'lowStock' | 'totalValue' | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<InventoryItem | undefined>();
   const [selectedBranchForDetail, setSelectedBranchForDetail] = useState<string | undefined>();
@@ -158,15 +160,14 @@ function App() {
     }
   }, [isAdmin]);
   
-  // 지점 목록 추출 (orders에서)
+  // 지점 목록 추출 (orders에서 + 와펜/키캡 보고용 기본 목록)
   const branchNames = useMemo(() => {
-    const branchSet = new Set<string>();
+    const branchSet = new Set<string>([...BRANCH_LIST]);
     orders.forEach(order => branchSet.add(order.branchName));
     if (currentUser?.branchName) {
       branchSet.add(currentUser.branchName);
     }
-    branchSet.add('본사');
-    return Array.from(branchSet).sort();
+    return Array.from(branchSet).sort((a, b) => (a === '본사' ? -1 : b === '본사' ? 1 : a.localeCompare(b)));
   }, [orders, currentUser?.branchName]);
   
   // 주문 입력 시 실시간 계산
@@ -798,11 +799,12 @@ function App() {
 
           {primaryTab === 'branches' && (
             <div className="main-content">
-              {isAdmin && (
+              {(isAdmin || true) && (
                 <TabNavigation
                   tabs={[
                     { id: 'notes', label: '지점 특이사항', icon: <FileText size={18} /> },
-                    { id: 'management', label: '지점 관리', icon: <MapPin size={18} /> },
+                    { id: 'branch-report', label: '지점별 재고 보고', icon: <Copy size={18} /> },
+                    ...(isAdmin ? [{ id: 'management', label: '지점 관리', icon: <MapPin size={18} /> }] : []),
                   ]}
                   activeTab={branchTab}
                   onTabChange={(tabId) => setBranchTab(tabId as typeof branchTab)}
@@ -814,6 +816,13 @@ function App() {
                   branches={branchNames}
                   notes={branchNotes}
                   onSave={saveBranchNote}
+                />
+              )}
+              {branchTab === 'branch-report' && (
+                <BranchStockReport
+                  items={items}
+                  extraBranchNames={branchNames}
+                  currentUserBranch={currentUser?.branchName}
                 />
               )}
               {isAdmin && branchTab === 'management' && (

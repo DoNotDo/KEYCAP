@@ -91,16 +91,21 @@ npm run build
 
 #### 빠른 배포 방법
 
-1. **Windows 사용자 (가장 쉬움)**
+1. **사이트에 바로 반영 (권장)**
+   - **`deploy-now.bat`** 더블클릭 또는 실행  
+   - 변경사항 커밋 후 **main**에 푸시까지 한 번에 수행 → **1~2분 후** [사이트](https://management-9f7d8.web.app)에 반영
+
+2. **Windows 사용자 (기타)**
    ```bash
    # 상세 버전 (충돌 체크 포함)
    push-to-git.bat
    
-   # 또는 간단 버전
+   # 또는 간단 버전 (현재 브랜치만 푸시)
    quick-push.bat
    ```
+   ⚠️ **배포는 main 브랜치에 푸시할 때만** 자동 실행됩니다. 다른 브랜치면 main으로 머지 후 푸시하거나 `deploy-now.bat` 사용
 
-2. **수동 Git 명령어**
+3. **수동 Git 명령어**
    ```bash
    git add .
    git commit -m "수정 내용"
@@ -108,7 +113,7 @@ npm run build
    git push origin main
    ```
 
-3. **배포 확인**
+4. **배포 확인**
    - GitHub 저장소 → Actions 탭에서 배포 상태 확인
    - 약 1-2분 후 Firebase 사이트에서 변경사항 확인
 
@@ -216,6 +221,7 @@ npm run build
 
 자세한 가이드는 다음 문서를 참고하세요:
 
+- **[와펜·키캡 재고 보고 가이드](docs/와펜키캡_재고보고_가이드.md)** - 지점별 재고 보고(카톡 형식) 및 출고 활용
 - **[설정 가이드](docs/setup/SETUP_GUIDE.md)** - 환경 설정 및 작업 흐름
 - **[서버 실행 가이드](docs/setup/START_SERVER.md)** - 개발 서버 실행 방법
 - **[배포 가이드](docs/deployment/DEPLOY_GUIDE.md)** - Firebase/Vercel 배포 방법

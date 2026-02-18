@@ -2654,3 +2654,75 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* ============================================
+   지점별 재고 보고 (와펜/키캡 카톡 형식)
+   ============================================ */
+.branch-stock-report {
+  padding: var(--spacing-lg);
+}
+.branch-stock-report h2 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-xl);
+}
+.branch-stock-report-desc {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  margin-bottom: var(--spacing-xl);
+  line-height: 1.5;
+}
+.branch-stock-report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+.branch-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: 500;
+}
+.branch-select {
+  min-width: 160px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+.branch-stock-report-content {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+.branch-stock-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+.branch-stock-category h3 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-base);
+  color: var(--color-primary);
+}
+.branch-stock-category ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.branch-stock-category li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--spacing-md);
+}
+.branch-stock-category .base-name {
+  font-weight: 500;
+}
+.branch-stock-category .variant-line {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+}
