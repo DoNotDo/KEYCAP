@@ -1,20 +1,16 @@
-import { InventoryItem, BOMItem, ConsumptionRecord, Order } from '../types';
+import { InventoryItem, BOMItem, Order, MaterialConsumption } from '../types';
 import { X } from 'lucide-react';
 import { BOMReceipt } from './BOMReceipt';
 
 interface OrderDetailModalProps {
   order: Order;
   items: InventoryItem[];
-  consumptions: ConsumptionRecord[];
+  consumptions: MaterialConsumption[];
   onClose: () => void;
 }
 
 export const OrderDetailModal = ({ order, items, consumptions, onClose }: OrderDetailModalProps) => {
   const finishedItem = items.find(item => item.id === order.finishedItemId);
-
-  const getMaterialName = (id: string) => {
-    return items.find(item => item.id === id)?.name || '알 수 없음';
-  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -37,7 +33,7 @@ export const OrderDetailModal = ({ order, items, consumptions, onClose }: OrderD
               <h4>예상 부자재 소모량</h4>
               <BOMReceipt 
                 finishedItem={finishedItem!} 
-                bomItems={consumptions.map(c => ({ id: c.itemId, finishedItemId: order.finishedItemId, materialItemId: c.itemId, quantity: c.quantity/order.quantity })) as BOMItem[]}
+                bomItems={consumptions.map(c => ({ id: c.materialItemId, finishedItemId: order.finishedItemId, materialItemId: c.materialItemId, quantity: order.quantity > 0 ? c.requiredQuantity / order.quantity : 0 })) as BOMItem[]}
                 materialItems={items}
               />
             </div>

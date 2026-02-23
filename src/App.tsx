@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useInventory } from './hooks/useInventory';
-import { InventoryItem, BOMItem, User, BranchShortage, Order } from './types';
+import { InventoryItem, BOMItem, User, BranchShortage, Order, MaterialOrder } from './types';
 import { StatsCard } from './components/StatsCard';
 import { ItemForm } from './components/ItemForm';
 import { TransactionModal } from './components/TransactionModal';

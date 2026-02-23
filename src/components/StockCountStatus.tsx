@@ -17,7 +17,7 @@ export const StockCountStatus: React.FC<StockCountStatusProps> = ({ branches, it
 
   const branchStatus = useMemo((): BranchStatus[] => {
     const itemBranchMap = new Map<string, string>();
-    items.forEach(item => itemBranchMap.set(item.id, item.branchName));
+    items.forEach(item => { if (item.branchName != null) itemBranchMap.set(item.id, item.branchName); });
 
     const lastReportMap = new Map<string, string>();
 
