@@ -28,7 +28,7 @@ import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { BranchNotes } from './components/BranchNotes';
 import { BranchStockReport } from './components/BranchStockReport';
 import { StockCount } from './components/StockCount';
-import { StockCountStatus } from './components/StockCountStatus'; // 추가
+import { StockCountStatus } from './components/StockCountStatus';
 import { BRANCH_LIST } from './constants/branches';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
@@ -165,8 +165,12 @@ function App() {
   
   const branchNames = useMemo(() => {
     const branchSet = new Set<string>([...BRANCH_LIST]);
-    items.forEach(item => branchSet.add(item.branchName));
-    orders.forEach(order => branchSet.add(order.branchName));
+    items.forEach(item => {
+      if (item.branchName) branchSet.add(item.branchName);
+    });
+    orders.forEach(order => {
+      if (order.branchName) branchSet.add(order.branchName);
+    });
     if (currentUser?.branchName) {
       branchSet.add(currentUser.branchName);
     }
