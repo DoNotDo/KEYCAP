@@ -8,6 +8,7 @@ export interface InventoryItem {
   category: string;
   type: ItemType; // 재고 타입 추가
   branchName?: string; // 지점별 재고 구분
+  betaProductId?: string; // 완성재고만: 주간보고 품목(BetaProduct)과 연동
   quantity: number;
   minQuantity: number;
   maxQuantity: number;
@@ -59,6 +60,7 @@ export interface MaterialOrder {
   status: MaterialOrderStatus;
   orderDate: string;
   expectedDate?: string;
+  receivedAt?: string; // 실제 입고일
   nextOrderDate?: string;
   supplier?: string;
   notes?: string;
@@ -172,4 +174,67 @@ export interface ReportData {
   totalOrders: number;
   totalFinishedItemsConsumed: number;
   totalMaterialsConsumed: number;
+}
+
+// ========== 베타 테스트 ==========
+/** 관리 가능한 지점 (어드민 CRUD) */
+export interface BetaBranch {
+  id: string;
+  name: string;
+  order: number;
+  active: boolean;
+}
+
+/** 베타 품목 카테고리 (10개, 어드민 CRUD) */
+export interface BetaCategory {
+  id: string;
+  name: string;
+  order: number;
+}
+
+/** 베타 품목 (카테고리당 10개, 어드민 CRUD) */
+export interface BetaProduct {
+  id: string;
+  categoryId: string;
+  name: string;
+  order: number;
+}
+
+/** 주간 재고 수준 0~10, 선택적 주간 판매수량 */
+export interface BetaWeeklyReport {
+  id: string;
+  branchName: string;
+  weekKey: string; // "2026-W08"
+  levels: Record<string, number>; // productId -> 0~10
+  sales?: Record<string, number>; // productId -> 판매수량
+  reportedAt: string;
+  reportedBy?: string;
+}
+
+/** 생산 계획 1품목: 수요 - 완성재고 = 생산개수 */
+export interface ProductionPlanItem {
+  productId: string;
+  productName: string;
+  categoryName: string;
+  demand: number;   // 주간보고 기반 수요
+  finishedStock: number;
+  productionQty: number; // max(0, demand - finishedStock)
+  finishedItemId?: string; // BOM 매핑용
+}
+
+/** 부자재 소요 (생산계획 기반 자동 산출) */
+export interface MaterialRequirement {
+  materialItemId: string;
+  materialName: string;
+  requiredQty: number;
+  currentStock: number;
+  shortage: number;
+}
+
+/** 발주 요청서 항목 (자동 생성용) */
+export interface OrderRequestItem {
+  materialItemId: string;
+  materialName: string;
+  quantity: number;
+  reason?: string;
 }

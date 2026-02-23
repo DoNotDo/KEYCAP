@@ -10,7 +10,8 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote, BetaWeeklyReport, BetaBranch, BetaCategory, BetaProduct } from '../types';
+import { BETA_BRANCHES } from '../constants/beta';
 
 const COLLECTIONS = {
   ITEMS: 'items',
@@ -20,6 +21,10 @@ const COLLECTIONS = {
   CONSUMPTIONS: 'consumptions',
   MATERIAL_ORDERS: 'materialOrders',
   BRANCH_NOTES: 'branchNotes',
+  BETA_WEEKLY_REPORTS: 'betaWeeklyReports',
+  BETA_BRANCHES: 'betaBranches',
+  BETA_CATEGORIES: 'betaCategories',
+  BETA_PRODUCTS: 'betaProducts',
 };
 
 let itemsCache: InventoryItem[] = [];
@@ -29,6 +34,10 @@ let ordersCache: Order[] = [];
 let consumptionsCache: ConsumptionRecord[] = [];
 let materialOrdersCache: MaterialOrder[] = [];
 let branchNotesCache: BranchNote[] = [];
+let betaReportsCache: BetaWeeklyReport[] = [];
+let betaBranchesCache: BetaBranch[] = [];
+let betaCategoriesCache: BetaCategory[] = [];
+let betaProductsCache: BetaProduct[] = [];
 
 const getItemsFromFirestore = async (): Promise<InventoryItem[]> => {
   const snapshot = await getDocs(collection(db, COLLECTIONS.ITEMS));
@@ -114,6 +123,31 @@ const getBranchNotesFromFirestore = async (): Promise<BranchNote[]> => {
       updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
     } as BranchNote;
   });
+};
+
+const getBetaReportsFromFirestore = async (): Promise<BetaWeeklyReport[]> => {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.BETA_WEEKLY_REPORTS));
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      reportedAt: data.reportedAt?.toDate?.().toISOString() || data.reportedAt,
+    } as BetaWeeklyReport;
+  });
+};
+
+const getBetaBranchesFromFirestore = async (): Promise<BetaBranch[]> => {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.BETA_BRANCHES));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BetaBranch)).sort((a, b) => a.order - b.order);
+};
+const getBetaCategoriesFromFirestore = async (): Promise<BetaCategory[]> => {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.BETA_CATEGORIES));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BetaCategory)).sort((a, b) => a.order - b.order);
+};
+const getBetaProductsFromFirestore = async (): Promise<BetaProduct[]> => {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.BETA_PRODUCTS));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BetaProduct)).sort((a, b) => a.order - b.order);
 };
 
 export const storage = {
@@ -230,6 +264,179 @@ export const storage = {
     consumptionsCache.push(consumption);
   },
 
+  getBetaReports: (): BetaWeeklyReport[] => betaReportsCache,
+  getBetaReportsAsync: async (): Promise<BetaWeeklyReport[]> => {
+    betaReportsCache = await getBetaReportsFromFirestore();
+    return betaReportsCache;
+  },
+  subscribeBetaReports: (callback: (reports: BetaWeeklyReport[]) => void): (() => void) => {
+    const q = query(collection(db, COLLECTIONS.BETA_WEEKLY_REPORTS));
+    return onSnapshot(q, (snapshot) => {
+      betaReportsCache = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          reportedAt: data.reportedAt?.toDate?.().toISOString() || data.reportedAt,
+        } as BetaWeeklyReport;
+      });
+      callback(betaReportsCache);
+    });
+  },
+  saveBetaReport: async (report: BetaWeeklyReport): Promise<void> => {
+    const reportRef = doc(db, COLLECTIONS.BETA_WEEKLY_REPORTS, report.id);
+    await setDoc(reportRef, { ...report });
+    const idx = betaReportsCache.findIndex(r => r.id === report.id);
+    if (idx >= 0) betaReportsCache[idx] = report; else betaReportsCache.push(report);
+  },
+
+  getBetaBranches: (): BetaBranch[] => betaBranchesCache,
+  getBetaBranchesAsync: async (): Promise<BetaBranch[]> => {
+    betaBranchesCache = await getBetaBranchesFromFirestore();
+    return betaBranchesCache;
+  },
+  subscribeBetaBranches: (callback: (list: BetaBranch[]) => void): (() => void) => {
+    return onSnapshot(query(collection(db, COLLECTIONS.BETA_BRANCHES)), async () => {
+      betaBranchesCache = await getBetaBranchesFromFirestore();
+      callback(betaBranchesCache);
+    });
+  },
+  addBetaBranch: async (branch: Omit<BetaBranch, 'id'>): Promise<BetaBranch> => {
+    const id = crypto.randomUUID();
+    const b: BetaBranch = { ...branch, id };
+    await setDoc(doc(db, COLLECTIONS.BETA_BRANCHES, id), b);
+    betaBranchesCache = [...betaBranchesCache, b].sort((a, b) => a.order - b.order);
+    return b;
+  },
+  updateBetaBranch: async (id: string, updates: Partial<BetaBranch>): Promise<void> => {
+    const ref = doc(db, COLLECTIONS.BETA_BRANCHES, id);
+    await updateDoc(ref, updates as Record<string, unknown>);
+    betaBranchesCache = betaBranchesCache.map(b => b.id === id ? { ...b, ...updates } : b).sort((a, b) => a.order - b.order);
+  },
+  deleteBetaBranch: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, COLLECTIONS.BETA_BRANCHES, id));
+    betaBranchesCache = betaBranchesCache.filter(b => b.id !== id);
+  },
+
+  getBetaCategories: (): BetaCategory[] => betaCategoriesCache,
+  getBetaCategoriesAsync: async (): Promise<BetaCategory[]> => {
+    betaCategoriesCache = await getBetaCategoriesFromFirestore();
+    return betaCategoriesCache;
+  },
+  subscribeBetaCategories: (callback: (list: BetaCategory[]) => void): (() => void) => {
+    return onSnapshot(query(collection(db, COLLECTIONS.BETA_CATEGORIES)), async () => {
+      betaCategoriesCache = await getBetaCategoriesFromFirestore();
+      callback(betaCategoriesCache);
+    });
+  },
+  addBetaCategory: async (cat: Omit<BetaCategory, 'id'>): Promise<BetaCategory> => {
+    const id = crypto.randomUUID();
+    const c: BetaCategory = { ...cat, id };
+    await setDoc(doc(db, COLLECTIONS.BETA_CATEGORIES, id), c);
+    betaCategoriesCache = [...betaCategoriesCache, c].sort((a, b) => a.order - b.order);
+    return c;
+  },
+  updateBetaCategory: async (id: string, updates: Partial<BetaCategory>): Promise<void> => {
+    const ref = doc(db, COLLECTIONS.BETA_CATEGORIES, id);
+    await updateDoc(ref, updates as Record<string, unknown>);
+    betaCategoriesCache = betaCategoriesCache.map(c => c.id === id ? { ...c, ...updates } : c).sort((a, b) => a.order - b.order);
+  },
+  deleteBetaCategory: async (id: string): Promise<void> => {
+    const toDelete = betaProductsCache.filter(p => p.categoryId === id);
+    for (const p of toDelete) await deleteDoc(doc(db, COLLECTIONS.BETA_PRODUCTS, p.id));
+    await deleteDoc(doc(db, COLLECTIONS.BETA_CATEGORIES, id));
+    betaCategoriesCache = betaCategoriesCache.filter(c => c.id !== id);
+    betaProductsCache = betaProductsCache.filter(p => p.categoryId !== id);
+  },
+
+  getBetaProducts: (): BetaProduct[] => betaProductsCache,
+  getBetaProductsAsync: async (): Promise<BetaProduct[]> => {
+    betaProductsCache = await getBetaProductsFromFirestore();
+    return betaProductsCache;
+  },
+  subscribeBetaProducts: (callback: (list: BetaProduct[]) => void): (() => void) => {
+    return onSnapshot(query(collection(db, COLLECTIONS.BETA_PRODUCTS)), async () => {
+      betaProductsCache = await getBetaProductsFromFirestore();
+      callback(betaProductsCache);
+    });
+  },
+  addBetaProduct: async (product: Omit<BetaProduct, 'id'>): Promise<BetaProduct> => {
+    const id = crypto.randomUUID();
+    const p: BetaProduct = { ...product, id };
+    await setDoc(doc(db, COLLECTIONS.BETA_PRODUCTS, id), p);
+    betaProductsCache = [...betaProductsCache, p].sort((a, b) => a.order - b.order);
+    return p;
+  },
+  updateBetaProduct: async (id: string, updates: Partial<BetaProduct>): Promise<void> => {
+    const ref = doc(db, COLLECTIONS.BETA_PRODUCTS, id);
+    await updateDoc(ref, updates as Record<string, unknown>);
+    betaProductsCache = betaProductsCache.map(p => p.id === id ? { ...p, ...updates } : p).sort((a, b) => a.order - b.order);
+  },
+  deleteBetaProduct: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, COLLECTIONS.BETA_PRODUCTS, id));
+    betaProductsCache = betaProductsCache.filter(p => p.id !== id);
+  },
+
+  seedBetaBranchesIfEmpty: async (): Promise<void> => {
+    if (betaBranchesCache.length > 0) return;
+    betaBranchesCache = await getBetaBranchesFromFirestore();
+    if (betaBranchesCache.length > 0) return;
+    for (let i = 0; i < BETA_BRANCHES.length; i++) {
+      await storage.addBetaBranch({ name: BETA_BRANCHES[i], order: i, active: true });
+    }
+  },
+  seedBetaCategoriesAndProductsIfEmpty: async (): Promise<void> => {
+    betaCategoriesCache = await getBetaCategoriesFromFirestore();
+    betaProductsCache = await getBetaProductsFromFirestore();
+    if (betaCategoriesCache.length > 0 && betaProductsCache.length > 0) return;
+    if (betaCategoriesCache.length === 0) {
+      for (let i = 0; i < 10; i++) {
+        await storage.addBetaCategory({ name: `카테고리 ${i + 1}`, order: i });
+      }
+      betaCategoriesCache = await getBetaCategoriesFromFirestore();
+    }
+    if (betaProductsCache.length === 0 && betaCategoriesCache.length >= 10) {
+      for (let c = 0; c < 10; c++) {
+        const cat = betaCategoriesCache[c];
+        for (let p = 0; p < 10; p++) {
+          await storage.addBetaProduct({ categoryId: cat.id, name: `제품 ${c + 1}-${p + 1}`, order: p });
+        }
+      }
+    }
+  },
+
+  /** 해당 주차 지점×품목 샘플 보고 생성 (임의 수량, Firestore 지점/품목 사용) */
+  seedBetaReportsForWeek: async (weekKey: string): Promise<void> => {
+    await storage.getBetaBranchesAsync();
+    await storage.getBetaProductsAsync();
+    const branches = betaBranchesCache.filter(b => b.active).map(b => b.name);
+    const productIds = betaProductsCache.map(p => p.id);
+    if (branches.length === 0 || productIds.length === 0) return;
+    const levels = (): Record<string, number> => {
+      const o: Record<string, number> = {};
+      productIds.forEach(id => { o[id] = Math.floor(Math.random() * 11); });
+      return o;
+    };
+    const sales = (): Record<string, number> => {
+      const o: Record<string, number> = {};
+      productIds.forEach(id => { o[id] = Math.floor(Math.random() * 16); });
+      return o;
+    };
+    const now = new Date().toISOString();
+    for (const branchName of branches) {
+      const report: BetaWeeklyReport = {
+        id: `${branchName}_${weekKey}`,
+        branchName,
+        weekKey,
+        levels: levels(),
+        sales: sales(),
+        reportedAt: now,
+        reportedBy: '시드',
+      };
+      await storage.saveBetaReport(report);
+    }
+  },
+
   refresh: async (): Promise<void> => {
     itemsCache = await getItemsFromFirestore();
     transactionsCache = await getTransactionsFromFirestore();
@@ -238,5 +445,6 @@ export const storage = {
     consumptionsCache = await getConsumptionsFromFirestore();
     materialOrdersCache = await getMaterialOrdersFromFirestore();
     branchNotesCache = await getBranchNotesFromFirestore();
+    betaReportsCache = await getBetaReportsFromFirestore();
   },
 };

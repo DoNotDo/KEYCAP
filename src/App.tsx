@@ -29,10 +29,11 @@ import { BranchNotes } from './components/BranchNotes';
 import { BranchStockReport } from './components/BranchStockReport';
 import { StockCount } from './components/StockCount';
 import { StockCountStatus } from './components/StockCountStatus';
+import { BetaSection } from './components/BetaSection';
 import { BRANCH_LIST } from './constants/branches';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
-import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy, CheckSquare } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy, CheckSquare, BarChart2 } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -90,7 +91,7 @@ function App() {
   const [orderFinishedItemId, setOrderFinishedItemId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | undefined>();
-  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports' | 'stock-count' | 'stock-count-status'>('dashboard');
+  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports' | 'stock-count' | 'stock-count-status' | 'beta'>('dashboard');
   const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
   const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'branch-orders'>('branch-orders');
   const [branchTab, setBranchTab] = useState<'notes' | 'management' | 'branch-report'>('notes');
@@ -100,7 +101,7 @@ function App() {
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
 
   const stats = getStats();
   const finishedItems = useMemo(() => items.filter(item => item.type === 'finished'), [items]);
@@ -370,6 +371,7 @@ function App() {
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
     { id: 'orders', label: '발주', icon: <FileText size={18} /> },
     { id: 'branches', label: '지점', icon: <MapPin size={18} /> },
+    { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
     { id: 'reports', label: '리포트', icon: <Receipt size={18} /> },
     { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
     { id: 'stock-count-status', label: '보고 현황', icon: <CheckSquare size={18} /> },
@@ -380,6 +382,7 @@ function App() {
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
     { id: 'orders', label: '발주', icon: <FileText size={18} /> },
     { id: 'branches', label: '특이사항', icon: <MapPin size={18} /> },
+    { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
     { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
   ];
 
@@ -394,7 +397,9 @@ function App() {
               <span className="user-branch">(관리자)</span>
             ) : currentUser.branchName ? (
               <span className="user-branch">({currentUser.branchName})</span>
-            ) : null}
+            ) : (
+              <span className="user-branch">({currentUser.username})</span>
+            )}
           </div>
           <div className="header-actions">
             {isAdmin && (
@@ -552,6 +557,8 @@ function App() {
           {primaryTab === 'stock-count' && currentUser && <div className="main-content"><StockCount items={items} user={currentUser} onSubmit={handleStockCountSubmit} /></div>}
 
           {primaryTab === 'stock-count-status' && isAdmin && <div className="main-content"><StockCountStatus branches={branchNames} items={items} transactions={transactions} /></div>}
+
+          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} materialOrders={materialOrders} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
         </div>
       </main>
 

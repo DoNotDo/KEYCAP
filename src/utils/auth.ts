@@ -2,13 +2,19 @@ import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, Timesta
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db, auth as firebaseAuth } from './firebase';
 import { User } from '../types';
+import { BETA_EMPLOYEE_LOGINS } from '../constants/beta';
 
 const COLLECTIONS = { USERS: 'users' };
 
 const DEFAULT_USERS: Omit<User, 'id' | 'createdAt' | 'updatedAt'>[] = [
   { username: 'admin', password: 'admin123', role: 'admin', status: 'active' },
-  { username: '직원1', password: 'emp123', role: 'employee', branchName: '강남점', status: 'active' },
-  { username: '직원2', password: 'emp123', role: 'employee', branchName: '서초점', status: 'active' },
+  ...BETA_EMPLOYEE_LOGINS.map(({ loginId, branchName }) => ({
+    username: loginId,
+    password: 'emp123',
+    role: 'employee' as const,
+    branchName,
+    status: 'active' as const,
+  })),
 ];
 
 const convertFirebaseUserToAppUser = async (firebaseUser: FirebaseUser | null): Promise<User | null> => {
@@ -23,9 +29,17 @@ const convertFirebaseUserToAppUser = async (firebaseUser: FirebaseUser | null): 
         createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
       } as User;
-      // 관리자는 지점이 없음 — Firestore에 잘못 저장된 branchName 무시
-      if (appUser.role === 'admin') {
+      // admin 계정이면 항상 관리자로 처리 (Firestore에 role/branchName 잘못 저장돼도 복구)
+      const isAdminAccount = firebaseUser.email === 'admin@inventory.local' || data.username === 'admin';
+      if (isAdminAccount) {
+        appUser.role = 'admin';
         appUser.branchName = undefined;
+      } else if (appUser.role === 'admin') {
+        appUser.branchName = undefined;
+      } else if (appUser.branchName) {
+        // 예전 표기 보정: 강남점 → 강남, 서초점 → 수원
+        if (appUser.branchName === '강남점') appUser.branchName = '강남';
+        else if (appUser.branchName === '서초점') appUser.branchName = '수원';
       }
       return appUser;
     }
@@ -39,26 +53,26 @@ export const auth = {
   initialize: async (): Promise<void> => {
     try {
       const snapshot = await getDocs(collection(db, COLLECTIONS.USERS));
-      if (snapshot.empty) {
-        for (const userData of DEFAULT_USERS) {
-          try {
-            const email = `${userData.username}@inventory.local`;
-            const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, userData.password);
-            const user: User = {
-              ...userData,
-              id: userCredential.user.uid,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            await setDoc(doc(db, COLLECTIONS.USERS, user.id), {
-              ...user,
-              createdAt: Timestamp.fromDate(new Date(user.createdAt)),
-              updatedAt: Timestamp.fromDate(new Date(user.updatedAt)),
-            });
-          } catch (error: any) {
-            if (error.code !== 'auth/email-already-in-use') {
-              console.error('Error creating default user:', error);
-            }
+      const existingUsernames = new Set(snapshot.docs.map(d => d.data().username));
+      for (const userData of DEFAULT_USERS) {
+        if (existingUsernames.has(userData.username)) continue;
+        try {
+          const email = `${userData.username}@inventory.local`;
+          const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, userData.password);
+          const user: User = {
+            ...userData,
+            id: userCredential.user.uid,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, COLLECTIONS.USERS, user.id), {
+            ...user,
+            createdAt: Timestamp.fromDate(new Date(user.createdAt)),
+            updatedAt: Timestamp.fromDate(new Date(user.updatedAt)),
+          });
+        } catch (error: any) {
+          if (error.code !== 'auth/email-already-in-use') {
+            console.error('Error creating default user:', error);
           }
         }
       }
@@ -110,8 +124,9 @@ export const auth = {
   },
 
   login: async (username: string, password: string): Promise<User | null> => {
+    const trimUser = username.trim().toLowerCase();
+    const email = `${trimUser}@inventory.local`;
     try {
-      const email = `${username}@inventory.local`;
       const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const appUser = await convertFirebaseUserToAppUser(userCredential.user);
       if (appUser && appUser.status === 'active') {
@@ -119,7 +134,10 @@ export const auth = {
         return appUser;
       }
       return null;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === 'auth/user-not-found' || error?.code === 'auth/invalid-credential') {
+        return null;
+      }
       console.error('Login error:', error);
       return null;
     }
@@ -134,7 +152,15 @@ export const auth = {
     const data = localStorage.getItem('inventory_current_user');
     if (!data) return null;
     const user = JSON.parse(data) as User;
-    if (user.role === 'admin') user.branchName = undefined;
+    const isAdminAccount = user.username === 'admin' || user.role === 'admin';
+    if (isAdminAccount) {
+      user.role = 'admin';
+      user.branchName = undefined;
+    } else if (user.branchName === '강남점') {
+      user.branchName = '강남';
+    } else if (user.branchName === '서초점') {
+      user.branchName = '수원';
+    }
     return user;
   },
 

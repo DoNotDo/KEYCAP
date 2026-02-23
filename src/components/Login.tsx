@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { User } from '../types';
 import { auth } from '../utils/auth';
+import { BETA_EMPLOYEE_LOGINS } from '../constants/beta';
 import { Package, LogIn } from 'lucide-react';
 
 interface LoginProps {
@@ -79,11 +80,12 @@ export const Login = ({ onLogin }: LoginProps) => {
           </button>
 
           <div className="login-info">
-            <p><strong>테스트 계정:</strong></p>
+            <p><strong>테스트 계정</strong></p>
             <ul>
-              <li>어드민: admin / admin123</li>
-              <li>직원1: 직원1 / emp123</li>
-              <li>직원2: 직원2 / emp123</li>
+              <li>관리자: admin / admin123</li>
+              {BETA_EMPLOYEE_LOGINS.map(({ branchName, loginId }) => (
+                <li key={loginId}>{branchName}: {loginId} / emp123</li>
+              ))}
             </ul>
           </div>
         </form>

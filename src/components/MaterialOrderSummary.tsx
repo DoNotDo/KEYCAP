@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { InventoryItem, MaterialOrder } from '../types';
-import { AlertTriangle, CalendarClock, PackageCheck, BarChart3 } from 'lucide-react';
+import { MaterialOrderTimeline } from './MaterialOrderTimeline';
+import { AlertTriangle, CalendarClock, PackageCheck } from 'lucide-react';
 
 interface MaterialOrderSummaryProps {
   materialOrders: MaterialOrder[];
@@ -83,15 +84,7 @@ export const MaterialOrderSummary = ({ materialOrders, materialItems }: Material
         )}
       </div>
 
-      <div className="summary-section">
-        <div className="summary-section-header">
-          <h3>
-            <BarChart3 size={18} />
-            발주 진행 상황 (간트 차트)
-          </h3>
-        </div>
-        <div>(개발 중)</div>
-      </div>
+      <MaterialOrderTimeline materialOrders={materialOrders} materialItems={materialItems} />
 
       <div className="summary-section">
         <div className="summary-section-header">

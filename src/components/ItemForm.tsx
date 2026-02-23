@@ -1,5 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { InventoryItem, ItemType } from '../types';
+import { storage } from '../utils/storage';
+import { BetaProduct } from '../types';
 import { X } from 'lucide-react';
 
 interface ItemFormProps {
@@ -13,6 +15,7 @@ interface ItemFormProps {
 }
 
 export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdmin, onSubmit, onCancel }: ItemFormProps) => {
+  const [betaProducts, setBetaProducts] = useState<BetaProduct[]>([]);
   const [formData, setFormData] = useState({
     branchName: item?.branchName || defaultBranchName || '',
     name: item?.name || '',
@@ -20,6 +23,7 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
     imageUrl: item?.imageUrl || '',
     category: item?.category || '',
     type: (item?.type || defaultType || 'material') as ItemType,
+    betaProductId: item?.betaProductId || '',
     quantity: item?.quantity || 0,
     minQuantity: item?.minQuantity || 0,
     maxQuantity: item?.maxQuantity || 0,
@@ -28,6 +32,12 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
     location: item?.location || '',
     description: item?.description || '',
   });
+
+  useEffect(() => {
+    if (formData.type === 'finished') {
+      storage.getBetaProductsAsync().then(() => setBetaProducts(storage.getBetaProducts()));
+    }
+  }, [formData.type]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -100,7 +110,7 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
               <label>재고 타입 *</label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as ItemType })}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as ItemType, betaProductId: e.target.value === 'material' ? '' : formData.betaProductId })}
                 required
                 className="form-select"
               >
@@ -108,6 +118,21 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
                 <option value="finished">완성재고</option>
               </select>
             </div>
+            {formData.type === 'finished' && betaProducts.length > 0 && (
+              <div className="form-group">
+                <label>주간보고 품목 연동</label>
+                <select
+                  value={formData.betaProductId}
+                  onChange={(e) => setFormData({ ...formData, betaProductId: e.target.value })}
+                  className="form-select"
+                >
+                  <option value="">선택 안 함</option>
+                  {betaProducts.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="form-row">
