@@ -11,20 +11,15 @@ interface BOMFormProps {
 }
 
 export const BOMForm = ({ finishedItem, bomItems, materialItems, onSave, onCancel }: BOMFormProps) => {
-  const [bomList, setBomList] = useState<Array<{ materialItemId: string; quantity: number }>>(
-    bomItems.length > 0
-      ? bomItems.map(bom => ({ materialItemId: bom.materialItemId, quantity: bom.quantity }))
-      : [{ materialItemId: '', quantity: 0 }]
-  );
+  const [bomList, setBomList] = useState<Array<{ materialItemId: string; quantity: number }>>([]);
 
-  // bomItems가 변경되면 bomList 업데이트
   useEffect(() => {
     if (bomItems.length > 0) {
       setBomList(bomItems.map(bom => ({ materialItemId: bom.materialItemId, quantity: bom.quantity })));
     } else {
       setBomList([{ materialItemId: '', quantity: 0 }]);
     }
-  }, [bomItems]);
+  }, [bomItems, finishedItem.id]);
 
   const handleAddRow = () => {
     setBomList([...bomList, { materialItemId: '', quantity: 0 }]);
@@ -43,9 +38,10 @@ export const BOMForm = ({ finishedItem, bomItems, materialItems, onSave, onCance
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const validBOM = bomList.filter(
-      item => item.materialItemId && item.quantity > 0
-    );
+    const validBOM = bomList
+      .filter(item => item.materialItemId && item.quantity > 0)
+      .map(item => ({ ...item, finishedItemId: finishedItem.id }));
+      
     if (validBOM.length > 0 || bomList.length === 0) {
       onSave(validBOM);
     } else {
@@ -95,7 +91,6 @@ export const BOMForm = ({ finishedItem, bomItems, materialItems, onSave, onCance
                         >
                           <option value="">부자재 선택</option>
                           {(() => {
-                            // 카테고리별로 그룹화
                             const groupedByCategory = materialItems.reduce((acc, material) => {
                               const category = material.category || '기타';
                               if (!acc[category]) {
@@ -105,7 +100,6 @@ export const BOMForm = ({ finishedItem, bomItems, materialItems, onSave, onCance
                               return acc;
                             }, {} as Record<string, InventoryItem[]>);
                             
-                            // 카테고리명으로 정렬
                             const sortedCategories = Object.keys(groupedByCategory).sort();
                             
                             return sortedCategories.map(category => (

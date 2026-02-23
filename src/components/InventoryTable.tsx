@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { InventoryItem } from '../types';
-import { Edit, Trash2, Package, ArrowDown, ArrowUp, AlertTriangle, Settings, Eye } from 'lucide-react';
+import { Edit, Trash2, Package, AlertTriangle, Settings, Eye } from 'lucide-react';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -27,13 +27,13 @@ export const InventoryTable = ({
   const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.location.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const sortedItems = [...filteredItems].sort((a, b) => {
     const aVal = a[sortField];
     const bVal = b[sortField];
-    const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+    const comparison = (aVal ?? '') < (bVal ?? '') ? -1 : (aVal ?? '') > (bVal ?? '') ? 1 : 0;
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 

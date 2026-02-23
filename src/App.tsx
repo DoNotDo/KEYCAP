@@ -43,7 +43,7 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       await auth.initialize();
-      const user = await auth.getCurrentUser();
+      const user = auth.getCurrentUser();
       setCurrentUser(user);
     };
     initAuth();
@@ -60,9 +60,6 @@ function App() {
     updateItem,
     deleteItem,
     processTransaction,
-    addBOMItem,
-    updateBOMItem,
-    deleteBOMItem,
     saveBOMForFinishedItem,
     getBOMByFinishedItem,
     addOrder,
@@ -184,12 +181,6 @@ function App() {
     return [];
   }, [orderFinishedItemId, orderQuantity, calculateMaterialConsumption]);
 
-  const filteredOrders = useMemo(() => {
-    if (!currentUser) return orders;
-    if (currentUser.role === 'admin') return orders;
-    return orders.filter(order => order.branchName === currentUser.branchName);
-  }, [orders, currentUser]);
-
   const handleLogin = (user: User) => {
     setCurrentUser(user);
   };
@@ -244,12 +235,7 @@ function App() {
   const handleSaveBOM = (bomList: Omit<BOMItem, 'id'>[]) => {
     if (!bomItem) return;
     
-    const bomListWithFinishedId = bomList.map(bom => ({
-      ...bom,
-      finishedItemId: bomItem.id,
-    }));
-    
-    saveBOMForFinishedItem(bomItem.id, bomListWithFinishedId);
+    saveBOMForFinishedItem(bomItem.id, bomList);
     
     alert(`BOM이 저장되었습니다.`);
     

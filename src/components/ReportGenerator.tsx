@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ReportData, ReportPeriod, Order, ConsumptionRecord, InventoryItem } from '../types';
-import { FileText, Download, Calendar } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -65,16 +65,8 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
       endDate: end.toISOString(),
       orders: filteredOrders,
       consumptions: filteredConsumptions,
-      finishedItemConsumptions: Array.from(finishedItemMap.entries()).map(([itemId, data]) => ({
-        itemId,
-        itemName: data.name,
-        totalQuantity: data.quantity,
-      })),
-      materialConsumptions: Array.from(materialMap.entries()).map(([itemId, data]) => ({
-        itemId,
-        itemName: data.name,
-        totalQuantity: data.quantity,
-      })),
+      finishedItemConsumptions: Array.from(finishedItemMap.entries()).map(([itemId, data]) => ({ itemId, itemName: data.name, totalQuantity: data.quantity })),
+      materialConsumptions: Array.from(materialMap.entries()).map(([itemId, data]) => ({ itemId, itemName: data.name, totalQuantity: data.quantity })),
       totalOrders: filteredOrders.length,
       totalFinishedItemsConsumed: Array.from(finishedItemMap.values()).reduce((sum, item) => sum + item.quantity, 0),
       totalMaterialsConsumed: Array.from(materialMap.values()).reduce((sum, item) => sum + item.quantity, 0),
@@ -98,9 +90,7 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
 
     const orderRows = report.orders.map(order => {
       const finishedItem = items.find(i => i.id === order.finishedItemId);
-      const completionRate = order.shippedQuantity && order.quantity > 0
-        ? Math.round((order.shippedQuantity / order.quantity) * 100)
-        : null;
+      const completionRate = order.shippedQuantity && order.quantity > 0 ? Math.round((order.shippedQuantity / order.quantity) * 100) : null;
       return {
         지점: order.branchName,
         품목: finishedItem?.name || '알 수 없음',
@@ -112,15 +102,8 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
       };
     });
 
-    const finishedRows = report.finishedItemConsumptions.map(item => ({
-      품목: item.itemName,
-      소모수량: item.totalQuantity,
-    }));
-
-    const materialRows = report.materialConsumptions.map(item => ({
-      품목: item.itemName,
-      소모수량: item.totalQuantity,
-    }));
+    const finishedRows = report.finishedItemConsumptions.map(item => ({ 품목: item.itemName, 소모수량: item.totalQuantity }));
+    const materialRows = report.materialConsumptions.map(item => ({ 품목: item.itemName, 소모수량: item.totalQuantity }));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), '요약');
@@ -136,19 +119,13 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
         <div className="modal-header">
           <h2>보고서 생성</h2>
-          <button className="close-btn" onClick={onClose}>
-            <X size={24} />
-          </button>
+          <button className="close-btn" onClick={onClose}><X size={24} /></button>
         </div>
 
         <div className="report-generator-content">
           <div className="form-group">
             <label>보고서 유형 *</label>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
-              className="form-select"
-            >
+            <select value={period} onChange={(e) => setPeriod(e.target.value as ReportPeriod)} className="form-select">
               <option value="week">주간 보고서</option>
               <option value="month">월간 보고서</option>
             </select>
@@ -157,32 +134,17 @@ export const ReportGenerator = ({ orders, consumptions, items, onClose }: Report
           <div className="form-row">
             <div className="form-group">
               <label>시작일 *</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-              />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
             </div>
             <div className="form-group">
               <label>종료일 *</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-              />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
             </div>
           </div>
 
           <div className="form-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
-              취소
-            </button>
-            <button onClick={handleGenerate} className="btn btn-primary">
-              <Download size={18} />
-              엑셀 다운로드
-            </button>
+            <button type="button" onClick={onClose} className="btn btn-secondary">취소</button>
+            <button onClick={handleGenerate} className="btn btn-primary"><Download size={18} /> 엑셀 다운로드</button>
           </div>
         </div>
       </div>

@@ -10,9 +10,7 @@ interface OrderListWithTabsProps {
   onStatusUpdate?: (orderId: string, status: Order['status'], notes?: string) => void;
   onViewDetail?: (order: Order) => void;
   onProcess?: (order: Order) => void;
-  onShip?: (orderId: string, shippedQuantity: number) => void;
   onReceive?: (orderId: string) => void;
-  calculateConsumption?: (finishedItemId: string, quantity: number) => Array<{ materialName: string; quantity: number }>;
 }
 
 export const OrderListWithTabs = ({ 
@@ -22,9 +20,7 @@ export const OrderListWithTabs = ({
   onStatusUpdate, 
   onViewDetail, 
   onProcess, 
-  onShip, 
   onReceive, 
-  calculateConsumption 
 }: OrderListWithTabsProps) => {
   const [activeStatusTab, setActiveStatusTab] = useState<string>('all');
   const isAdmin = currentUser?.role === 'admin';
@@ -39,9 +35,7 @@ export const OrderListWithTabs = ({
     }
     
     if (activeStatusTab === 'completed') {
-      // 완료 상태는 월별로 그룹화하여 표시
       const completed = baseFiltered.filter(order => order.status === 'completed');
-      // 처리일 기준으로 정렬 (최신순)
       return completed.sort((a, b) => {
         const dateA = new Date(a.processedAt || a.orderDate);
         const dateB = new Date(b.processedAt || b.orderDate);
@@ -62,46 +56,33 @@ export const OrderListWithTabs = ({
 
   const getStatusIcon = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return <Clock size={18} />;
-      case 'processing':
-        return <Package size={18} />;
-      case 'shipping':
-        return <Truck size={18} />;
-      case 'received':
-        return <PackageCheck size={18} />;
-      case 'completed':
-        return <CheckCircle size={18} />;
-      case 'rejected':
-        return <XCircle size={18} />;
+      case 'pending': return <Clock size={18} />;
+      case 'processing': return <Package size={18} />;
+      case 'shipping': return <Truck size={18} />;
+      case 'received': return <PackageCheck size={18} />;
+      case 'completed': return <CheckCircle size={18} />;
+      case 'rejected': return <XCircle size={18} />;
     }
   };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return '#ed8936';
-      case 'processing':
-        return '#4299e1';
-      case 'shipping':
-        return '#9f7aea';
-      case 'received':
-        return '#38b2ac';
-      case 'completed':
-        return '#48bb78';
-      case 'rejected':
-        return '#f56565';
+      case 'pending': return '#ed8936';
+      case 'processing': return '#4299e1';
+      case 'shipping': return '#9f7aea';
+      case 'received': return '#38b2ac';
+      case 'completed': return '#48bb78';
+      case 'rejected': return '#f56565';
     }
   };
 
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
     if (onStatusUpdate) {
       const notes = newStatus === 'rejected' ? prompt('거절 사유를 입력하세요:') : undefined;
-      onStatusUpdate(orderId, newStatus, notes);
+      onStatusUpdate(orderId, newStatus, notes || undefined);
     }
   };
 
-  // 완성도 계산 (출고 수량 / 요청 수량 * 100)
   const getCompletionRate = (order: Order) => {
     if (order.shippedQuantity && order.quantity > 0) {
       return Math.round((order.shippedQuantity / order.quantity) * 100);
@@ -129,12 +110,7 @@ export const OrderListWithTabs = ({
     return (
       <div className="order-list-container">
         <TabNavigation
-          tabs={statusTabs.map(tab => ({ 
-            id: tab.id, 
-            label: tab.id === 'completed' && tab.count > 0
-              ? `${tab.label} (${tab.count})`
-              : `${tab.label}${tab.count > 0 ? ` (${tab.count})` : ''}` 
-          }))}
+          tabs={statusTabs.map(tab => ({ id: tab.id, label: `${tab.label}${tab.count > 0 ? ` (${tab.count})` : ''}` }))}
           activeTab={activeStatusTab}
           onTabChange={setActiveStatusTab}
         />
@@ -146,12 +122,7 @@ export const OrderListWithTabs = ({
   return (
     <div className="order-list-container">
       <TabNavigation
-        tabs={statusTabs.map(tab => ({ 
-          id: tab.id, 
-          label: tab.id === 'completed' && tab.count > 0
-            ? `${tab.label} (${tab.count})`
-            : `${tab.label}${tab.count > 0 ? ` (${tab.count})` : ''}` 
-        }))}
+        tabs={statusTabs.map(tab => ({ id: tab.id, label: `${tab.label}${tab.count > 0 ? ` (${tab.count})` : ''}` }))}
         activeTab={activeStatusTab}
         onTabChange={setActiveStatusTab}
       />
@@ -164,7 +135,6 @@ export const OrderListWithTabs = ({
       )}
       <div className="order-list">
         {activeStatusTab === 'completed' ? (
-          // 완료 상태는 월별로 그룹화하여 표시
           (() => {
             const groupedByMonth: { [key: string]: Order[] } = {};
             filteredOrders.forEach(order => {
@@ -177,30 +147,16 @@ export const OrderListWithTabs = ({
             });
             
             const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => {
-              // "2024년 1월" 형식을 Date로 변환
               const parseMonthKey = (key: string) => {
                 const match = key.match(/(\d{4})년 (\d{1,2})월/);
-                if (match) {
-                  return new Date(parseInt(match[1]), parseInt(match[2]) - 1, 1);
-                }
-                return new Date(0);
+                return match ? new Date(parseInt(match[1]), parseInt(match[2]) - 1, 1) : new Date(0);
               };
-              const dateA = parseMonthKey(a);
-              const dateB = parseMonthKey(b);
-              return dateB.getTime() - dateA.getTime();
+              return parseMonthKey(b).getTime() - parseMonthKey(a).getTime();
             });
             
             return sortedMonths.map(month => (
               <div key={month} style={{ marginBottom: '24px' }}>
-                <h4 style={{ 
-                  marginBottom: '12px', 
-                  padding: '8px 12px', 
-                  backgroundColor: '#e8f0fe', 
-                  borderRadius: '6px',
-                  color: '#1a73e8',
-                  fontSize: '16px',
-                  fontWeight: 600
-                }}>
+                <h4 style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#e8f0fe', borderRadius: '6px', color: '#1a73e8', fontSize: '16px', fontWeight: 600 }}>
                   {month} ({groupedByMonth[month].length}건)
                 </h4>
                 {groupedByMonth[month].map(order => {
@@ -213,9 +169,7 @@ export const OrderListWithTabs = ({
                             <Package size={20} />
                             <strong>{getItemName(order.finishedItemId)}</strong>
                           </div>
-                          {isAdmin && (
-                            <span className="order-branch">{order.branchName}</span>
-                          )}
+                          {isAdmin && <span className="order-branch">{order.branchName}</span>}
                         </div>
                         <div className="order-status-badge" style={{ color: getStatusColor(order.status) }}>
                           {getStatusIcon(order.status)}
@@ -224,57 +178,16 @@ export const OrderListWithTabs = ({
                       </div>
 
                       <div className="order-details">
-                        <div className="order-detail-row">
-                          <span className="label">요청 수량:</span>
-                          <span className="value">{order.quantity.toLocaleString()}개</span>
-                        </div>
-                        {order.shippedQuantity && (
-                          <div className="order-detail-row">
-                            <span className="label">출고 수량:</span>
-                            <span className="value" style={{ color: '#1a73e8', fontWeight: 600 }}>
-                              {order.shippedQuantity.toLocaleString()}개
-                              {completionRate !== null && (
-                                <span style={{ marginLeft: '8px', fontSize: '14px', color: completionRate >= 100 ? '#48bb78' : '#ed8936' }}>
-                                  ({completionRate}%)
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                        <div className="order-detail-row">
-                          <span className="label">주문일:</span>
-                          <span className="value">{formatDate(order.orderDate)}</span>
-                        </div>
-                        {order.processedAt && (
-                          <div className="order-detail-row">
-                            <span className="label">처리일:</span>
-                            <span className="value">{formatDate(order.processedAt)}</span>
-                          </div>
-                        )}
-                        {order.processedBy && (
-                          <div className="order-detail-row">
-                            <span className="label">처리자:</span>
-                            <span className="value">{order.processedBy}</span>
-                          </div>
-                        )}
-                        {order.notes && (
-                          <div className="order-detail-row">
-                            <span className="label">메모:</span>
-                            <span className="value">{order.notes}</span>
-                          </div>
-                        )}
+                        <div className="order-detail-row"><span className="label">요청 수량:</span><span className="value">{order.quantity.toLocaleString()}개</span></div>
+                        {order.shippedQuantity && <div className="order-detail-row"><span className="label">출고 수량:</span><span className="value" style={{ color: '#1a73e8', fontWeight: 600 }}>{order.shippedQuantity.toLocaleString()}개{completionRate !== null && <span style={{ marginLeft: '8px', fontSize: '14px', color: completionRate >= 100 ? '#48bb78' : '#ed8936' }}>({completionRate}%)</span>}</span></div>}
+                        <div className="order-detail-row"><span className="label">주문일:</span><span className="value">{formatDate(order.orderDate)}</span></div>
+                        {order.processedAt && <div className="order-detail-row"><span className="label">처리일:</span><span className="value">{formatDate(order.processedAt)}</span></div>}
+                        {order.processedBy && <div className="order-detail-row"><span className="label">처리자:</span><span className="value">{order.processedBy}</span></div>}
+                        {order.notes && <div className="order-detail-row"><span className="label">메모:</span><span className="value">{order.notes}</span></div>}
                       </div>
 
                       <div className="order-actions">
-                        {onViewDetail && (
-                          <button
-                            className="btn btn-secondary btn-small"
-                            onClick={() => onViewDetail(order)}
-                          >
-                            <Eye size={16} />
-                            상세보기
-                          </button>
-                        )}
+                        {onViewDetail && <button className="btn btn-secondary btn-small" onClick={() => onViewDetail(order)}><Eye size={16} />상세보기</button>}
                       </div>
                     </div>
                   );
@@ -293,113 +206,28 @@ export const OrderListWithTabs = ({
                       <Package size={20} />
                       <strong>{getItemName(order.finishedItemId)}</strong>
                     </div>
-                    {isAdmin && (
-                      <span className="order-branch">{order.branchName}</span>
-                    )}
+                    {isAdmin && <span className="order-branch">{order.branchName}</span>}
                   </div>
                   <div className="order-status-badge" style={{ color: getStatusColor(order.status) }}>
                     {getStatusIcon(order.status)}
-                    <span>
-                      {order.status === 'pending' ? '대기' :
-                       order.status === 'processing' ? '처리중' :
-                       order.status === 'shipping' ? '출고' :
-                       order.status === 'received' ? '입고' :
-                       order.status === 'completed' ? '완료' : '거절'}
-                    </span>
+                    <span>{order.status === 'pending' ? '대기' : order.status === 'processing' ? '처리중' : order.status === 'shipping' ? '출고' : order.status === 'received' ? '입고' : order.status === 'completed' ? '완료' : '거절'}</span>
                   </div>
                 </div>
 
                 <div className="order-details">
-                  <div className="order-detail-row">
-                    <span className="label">요청 수량:</span>
-                    <span className="value">{order.quantity.toLocaleString()}개</span>
-                  </div>
-                  {order.shippedQuantity && (
-                    <div className="order-detail-row">
-                      <span className="label">출고 수량:</span>
-                      <span className="value" style={{ color: '#1a73e8', fontWeight: 600 }}>
-                        {order.shippedQuantity.toLocaleString()}개
-                        {completionRate !== null && (
-                          <span style={{ marginLeft: '8px', fontSize: '14px', color: completionRate >= 100 ? '#48bb78' : '#ed8936' }}>
-                            ({completionRate}%)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  <div className="order-detail-row">
-                    <span className="label">주문일:</span>
-                    <span className="value">{formatDate(order.orderDate)}</span>
-                  </div>
-                  {order.processedAt && (
-                    <div className="order-detail-row">
-                      <span className="label">처리일:</span>
-                      <span className="value">{formatDate(order.processedAt)}</span>
-                    </div>
-                  )}
-                  {order.processedBy && (
-                    <div className="order-detail-row">
-                      <span className="label">처리자:</span>
-                      <span className="value">{order.processedBy}</span>
-                    </div>
-                  )}
-                  {order.notes && (
-                    <div className="order-detail-row">
-                      <span className="label">메모:</span>
-                      <span className="value">{order.notes}</span>
-                    </div>
-                  )}
+                  <div className="order-detail-row"><span className="label">요청 수량:</span><span className="value">{order.quantity.toLocaleString()}개</span></div>
+                  {order.shippedQuantity && <div className="order-detail-row"><span className="label">출고 수량:</span><span className="value" style={{ color: '#1a73e8', fontWeight: 600 }}>{order.shippedQuantity.toLocaleString()}개{completionRate !== null && <span style={{ marginLeft: '8px', fontSize: '14px', color: completionRate >= 100 ? '#48bb78' : '#ed8936' }}>({completionRate}%)</span>}</span></div>}
+                  <div className="order-detail-row"><span className="label">주문일:</span><span className="value">{formatDate(order.orderDate)}</span></div>
+                  {order.processedAt && <div className="order-detail-row"><span className="label">처리일:</span><span className="value">{formatDate(order.processedAt)}</span></div>}
+                  {order.processedBy && <div className="order-detail-row"><span className="label">처리자:</span><span className="value">{order.processedBy}</span></div>}
+                  {order.notes && <div className="order-detail-row"><span className="label">메모:</span><span className="value">{order.notes}</span></div>}
                 </div>
 
                 <div className="order-actions">
-                  {onViewDetail && (
-                    <button
-                      className="btn btn-secondary btn-small"
-                      onClick={() => onViewDetail(order)}
-                    >
-                      <Eye size={16} />
-                      상세보기
-                    </button>
-                  )}
-                  {isAdmin && order.status === 'pending' && onStatusUpdate && (
-                    <>
-                      <button
-                        className="btn btn-primary btn-small"
-                        onClick={() => {
-                          if (onProcess) {
-                            onProcess(order);
-                          } else {
-                            handleStatusChange(order.id, 'processing');
-                          }
-                        }}
-                      >
-                        처리 시작
-                      </button>
-                      <button
-                        className="btn btn-secondary btn-small"
-                        onClick={() => handleStatusChange(order.id, 'rejected')}
-                      >
-                        거절
-                      </button>
-                    </>
-                  )}
-                  {order.status === 'shipping' && onReceive && (
-                    <button
-                      className="btn btn-primary btn-small"
-                      onClick={() => onReceive(order.id)}
-                    >
-                      <PackageCheck size={16} />
-                      입고 처리
-                    </button>
-                  )}
-                  {order.status === 'received' && isAdmin && onStatusUpdate && (
-                    <button
-                      className="btn btn-primary btn-small"
-                      onClick={() => handleStatusChange(order.id, 'completed')}
-                    >
-                      완료 처리
-                    </button>
-                  )}
+                  {onViewDetail && <button className="btn btn-secondary btn-small" onClick={() => onViewDetail(order)}><Eye size={16} />상세보기</button>}
+                  {isAdmin && order.status === 'pending' && onStatusUpdate && <><button className="btn btn-primary btn-small" onClick={() => { if (onProcess) { onProcess(order); } else { handleStatusChange(order.id, 'processing'); }}}>처리 시작</button><button className="btn btn-secondary btn-small" onClick={() => handleStatusChange(order.id, 'rejected')}>거절</button></>}
+                  {order.status === 'shipping' && onReceive && <button className="btn btn-primary btn-small" onClick={() => onReceive(order.id)}><PackageCheck size={16} />입고 처리</button>}
+                  {order.status === 'received' && isAdmin && onStatusUpdate && <button className="btn btn-primary btn-small" onClick={() => handleStatusChange(order.id, 'completed')}>완료 처리</button>}
                 </div>
               </div>
             );

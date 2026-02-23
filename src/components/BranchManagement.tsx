@@ -1,15 +1,14 @@
-import { Order, InventoryItem, BranchShortage } from '../types';
+import { Order, BranchShortage } from '../types';
 import { Package, AlertTriangle, MapPin, ShoppingCart, Clock, CheckCircle } from 'lucide-react';
 
 interface BranchManagementProps {
   branchShortages: BranchShortage[];
   orders: Order[];
-  items: InventoryItem[];
   onBranchClick?: (branchShortage: BranchShortage) => void;
   onBranchDetail?: (branchName: string) => void;
 }
 
-export const BranchManagement = ({ branchShortages, orders, items, onBranchClick, onBranchDetail }: BranchManagementProps) => {
+export const BranchManagement = ({ branchShortages, orders, onBranchClick, onBranchDetail }: BranchManagementProps) => {
   const getBranchNames = () => {
     const branchSet = new Set<string>();
     orders.forEach(order => branchSet.add(order.branchName));
@@ -67,31 +66,19 @@ export const BranchManagement = ({ branchShortages, orders, items, onBranchClick
               <div className="branch-stats">
                 <div className="branch-stat-item">
                   <ShoppingCart size={18} />
-                  <div>
-                    <span className="stat-label">총 발주</span>
-                    <span className="stat-value">{stats.totalOrders}건</span>
-                  </div>
+                  <div><span className="stat-label">총 발주</span><span className="stat-value">{stats.totalOrders}건</span></div>
                 </div>
                 <div className="branch-stat-item">
                   <Clock size={18} />
-                  <div>
-                    <span className="stat-label">대기</span>
-                    <span className="stat-value">{stats.pendingOrders}건</span>
-                  </div>
+                  <div><span className="stat-label">대기</span><span className="stat-value">{stats.pendingOrders}건</span></div>
                 </div>
                 <div className="branch-stat-item">
                   <Package size={18} />
-                  <div>
-                    <span className="stat-label">처리중</span>
-                    <span className="stat-value">{stats.processingOrders}건</span>
-                  </div>
+                  <div><span className="stat-label">처리중</span><span className="stat-value">{stats.processingOrders}건</span></div>
                 </div>
                 <div className="branch-stat-item">
                   <CheckCircle size={18} />
-                  <div>
-                    <span className="stat-label">완료</span>
-                    <span className="stat-value">{stats.completedOrders}건</span>
-                  </div>
+                  <div><span className="stat-label">완료</span><span className="stat-value">{stats.completedOrders}건</span></div>
                 </div>
               </div>
               {stats.shortageCount > 0 && (
