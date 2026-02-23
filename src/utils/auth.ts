@@ -1,7 +1,7 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db, auth as firebaseAuth } from './firebase';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 
 const COLLECTIONS = { USERS: 'users' };
 
