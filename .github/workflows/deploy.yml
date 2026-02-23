@@ -50,6 +50,7 @@ jobs:
         fi
         echo "✅ FIREBASE_TOKEN 설정됨"
     
+    # FIREBASE_TOKEN 사용 (FirebaseExtended/action 사용 안 함 - firebaseServiceAccount 불필요)
     - name: Deploy to Firebase Hosting
       env:
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
