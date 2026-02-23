@@ -19,7 +19,6 @@ export const useInventory = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Firebase에서 데이터 로드 (비동기)
       const loadedItems = await storage.getItemsAsync();
       const loadedTransactions = await storage.getTransactionsAsync();
       const loadedBOM = await storage.getBOMAsync();
@@ -36,7 +35,6 @@ export const useInventory = () => {
       setBranchNotes(loadedBranchNotes);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
-      // 오류 발생 시 캐시된 데이터 사용
       const loadedItems = storage.getItems();
       const loadedTransactions = storage.getTransactions();
       const loadedBOM = storage.getBOM();
@@ -90,20 +88,17 @@ export const useInventory = () => {
     itemId: string,
     type: 'in' | 'out',
     quantity: number,
-    reason: string
+    reason: string,
+    userId?: string
   ) => {
     const item = items.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) throw new Error('상품을 찾을 수 없습니다.');
 
-    // 부자재는 출고 불가
-    if (item.type === 'material' && type === 'out') {
-      throw new Error('부자재는 출고할 수 없습니다. 부자재 출고는 완성재고 출고 시 자동으로 계산됩니다.');
+    if (item.type === 'material' && type === 'out' && !reason.includes('자동 차감')) {
+      throw new Error('부자재는 직접 출고할 수 없습니다.');
     }
 
-    const newQuantity = type === 'in'
-      ? item.quantity + quantity
-      : item.quantity - quantity;
-
+    const newQuantity = type === 'in' ? item.quantity + quantity : item.quantity - quantity;
     if (newQuantity < 0) {
       throw new Error('재고가 부족합니다.');
     }
@@ -115,13 +110,53 @@ export const useInventory = () => {
       quantity,
       reason,
       timestamp: new Date().toISOString(),
+      userId,
     };
 
-    await updateItem(itemId, { quantity: newQuantity });
+    const updatedItems = items.map(i => i.id === itemId ? { ...i, quantity: newQuantity } : i);
+    setItems(updatedItems);
+    await storage.saveItems(updatedItems);
+
     const updatedTransactions = [...transactions, transaction];
     setTransactions(updatedTransactions);
     await storage.saveTransaction(transaction);
-  }, [items, transactions, updateItem]);
+
+  }, [items, transactions]);
+  
+  const processStockCount = useCallback(async (counts: Map<string, number>, userId: string) => {
+    const updatedItems = [...items];
+    const newTransactions: Transaction[] = [];
+
+    for (const [itemId, actualQuantity] of counts.entries()) {
+      const itemIndex = updatedItems.findIndex(i => i.id === itemId);
+      if (itemIndex === -1) continue;
+
+      const item = updatedItems[itemIndex];
+      const difference = actualQuantity - item.quantity;
+
+      if (difference !== 0) {
+        updatedItems[itemIndex] = { ...item, quantity: actualQuantity, updatedAt: new Date().toISOString() };
+        
+        newTransactions.push({
+          id: crypto.randomUUID(),
+          itemId,
+          type: difference > 0 ? 'in' : 'out',
+          quantity: Math.abs(difference),
+          reason: '재고 실사',
+          timestamp: new Date().toISOString(),
+          userId,
+        });
+      }
+    }
+
+    setItems(updatedItems);
+    setTransactions(prev => [...prev, ...newTransactions]);
+    
+    // 한 번에 모든 변경사항 저장
+    await storage.saveItems(updatedItems);
+    await Promise.all(newTransactions.map(t => storage.saveTransaction(t)));
+
+  }, [items]);
 
   // BOM 관리
   const addBOMItem = useCallback(async (bomItem: Omit<BOMItem, 'id'>) => {
@@ -550,6 +585,7 @@ export const useInventory = () => {
     updateItem,
     deleteItem,
     processTransaction,
+    processStockCount,
     addBOMItem,
     updateBOMItem,
     deleteBOMItem,

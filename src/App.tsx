@@ -27,10 +27,12 @@ import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { BranchNotes } from './components/BranchNotes';
 import { BranchStockReport } from './components/BranchStockReport';
+import { StockCount } from './components/StockCount';
+import { StockCountStatus } from './components/StockCountStatus'; // 추가
 import { BRANCH_LIST } from './constants/branches';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
-import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy, CheckSquare } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -77,6 +79,7 @@ function App() {
     receiveOrder,
     completeOrder,
     getStats,
+    processStockCount,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -90,7 +93,7 @@ function App() {
   const [orderFinishedItemId, setOrderFinishedItemId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | undefined>();
-  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports'>('dashboard');
+  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports' | 'stock-count' | 'stock-count-status'>('dashboard');
   const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
   const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'branch-orders'>('branch-orders');
   const [branchTab, setBranchTab] = useState<'notes' | 'management' | 'branch-report'>('notes');
@@ -160,18 +163,16 @@ function App() {
     }
   }, [isAdmin]);
   
-  // 지점 목록 추출 (orders에서 + 와펜/키캡 보고용 기본 목록)
   const branchNames = useMemo(() => {
     const branchSet = new Set<string>([...BRANCH_LIST]);
+    items.forEach(item => branchSet.add(item.branchName));
     orders.forEach(order => branchSet.add(order.branchName));
     if (currentUser?.branchName) {
       branchSet.add(currentUser.branchName);
     }
     return Array.from(branchSet).sort((a, b) => (a === '본사' ? -1 : b === '본사' ? 1 : a.localeCompare(b)));
-  }, [orders, currentUser?.branchName]);
+  }, [items, orders, currentUser?.branchName]);
   
-  // 주문 입력 시 실시간 계산
-  // 주문 폼에서 선택한 완성재고와 수량에 따른 부자재 소모량 계산
   const orderConsumptions = useMemo(() => {
     if (orderFinishedItemId && orderQuantity > 0) {
       return calculateMaterialConsumption(orderFinishedItemId, orderQuantity);
@@ -179,7 +180,6 @@ function App() {
     return [];
   }, [orderFinishedItemId, orderQuantity, calculateMaterialConsumption]);
 
-  // 사용자별 필터링된 주문
   const filteredOrders = useMemo(() => {
     if (!currentUser) return orders;
     if (currentUser.role === 'admin') return orders;
@@ -218,7 +218,6 @@ function App() {
   const handleProcessTransaction = (type: 'in' | 'out', quantity: number, reason: string) => {
     if (!transactionItem) return;
     
-    // 부자재는 출고 불가
     if (transactionItem.type === 'material' && type === 'out') {
       alert('부자재는 출고할 수 없습니다. 부자재 출고는 완성재고 출고 시 자동으로 계산됩니다.');
       return;
@@ -241,9 +240,6 @@ function App() {
   const handleSaveBOM = (bomList: Omit<BOMItem, 'id'>[]) => {
     if (!bomItem) return;
     
-    console.log('BOM 저장 시작:', { finishedItemId: bomItem.id, bomList });
-    
-    // finishedItemId를 포함한 BOM 리스트 생성
     const bomListWithFinishedId = bomList.map(bom => ({
       ...bom,
       finishedItemId: bomItem.id,
@@ -251,29 +247,13 @@ function App() {
     
     saveBOMForFinishedItem(bomItem.id, bomListWithFinishedId);
     
-    // 저장 후 알림 및 확인
-    const savedBOM = getBOMByFinishedItem(bomItem.id);
-    console.log('저장 후 BOM 확인:', savedBOM);
-    
-    alert(`BOM이 저장되었습니다.\n완성재고: ${bomItem.name}\n부자재 수: ${bomList.length}개\n\n저장된 BOM이 화면에 반영됩니다.`);
+    alert(`BOM이 저장되었습니다.`);
     
     setShowBOMForm(false);
     setBomItem(undefined);
-    
-    // 강제 리렌더링을 위해 탭을 잠시 변경했다가 다시 돌아오기
-    const currentPrimary = primaryTab;
-    const currentInventory = inventoryTab;
-    if (currentPrimary === 'inventory' && currentInventory === 'finished') {
-      setPrimaryTab('dashboard');
-      setTimeout(() => {
-        setPrimaryTab('inventory');
-        setInventoryTab('finished');
-      }, 100);
-    }
   };
 
   const handleAddOrder = (branchName: string, finishedItemId: string, quantity: number) => {
-    // 직원의 경우 자신의 지점으로 고정
     const finalBranchName = currentUser?.role === 'employee' 
       ? (currentUser.branchName || branchName)
       : branchName;
@@ -374,16 +354,20 @@ function App() {
     setOrderFinishedItemId(finishedItemId);
     setOrderQuantity(quantity);
   };
+  
+  const handleStockCountSubmit = (counts: Map<string, number>) => {
+    if (!currentUser) return;
+    processStockCount(counts, currentUser.username);
+    alert('재고 실사 결과가 성공적으로 제출되었습니다.');
+    setPrimaryTab('inventory');
+  };
 
-  // 실시간 업데이트를 위한 주기적 새로고침 (선택사항)
   useEffect(() => {
     const interval = setInterval(() => {
-      // 필요시 데이터 새로고침 로직 추가
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // 로그인 화면
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
@@ -396,6 +380,24 @@ function App() {
       </div>
     );
   }
+
+  const adminTabs = [
+    { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
+    { id: 'inventory', label: '재고', icon: <Box size={18} /> },
+    { id: 'orders', label: '발주', icon: <FileText size={18} /> },
+    { id: 'branches', label: '지점', icon: <MapPin size={18} /> },
+    { id: 'reports', label: '리포트', icon: <Receipt size={18} /> },
+    { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
+    { id: 'stock-count-status', label: '보고 현황', icon: <CheckSquare size={18} /> },
+  ];
+
+  const employeeTabs = [
+    { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
+    { id: 'inventory', label: '재고', icon: <Box size={18} /> },
+    { id: 'orders', label: '발주', icon: <FileText size={18} /> },
+    { id: 'branches', label: '특이사항', icon: <MapPin size={18} /> },
+    { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
+  ];
 
   return (
     <div className="app">
@@ -489,20 +491,8 @@ function App() {
           />
         </div>
 
-        {/* 데스크톱 탭 네비게이션 (상위 카테고리) */}
         <TabNavigation
-          tabs={isAdmin ? [
-            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
-            { id: 'inventory', label: '재고', icon: <Box size={18} /> },
-            { id: 'orders', label: '발주', icon: <FileText size={18} /> },
-            { id: 'branches', label: '지점', icon: <MapPin size={18} /> },
-            { id: 'reports', label: '리포트', icon: <Receipt size={18} /> },
-          ] : [
-            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
-            { id: 'inventory', label: '재고', icon: <Box size={18} /> },
-            { id: 'orders', label: '발주', icon: <FileText size={18} /> },
-            { id: 'branches', label: '특이사항', icon: <MapPin size={18} /> },
-          ]}
+          tabs={isAdmin ? adminTabs : employeeTabs}
           activeTab={primaryTab}
           onTabChange={(tabId) => {
             setPrimaryTab(tabId as typeof primaryTab);
@@ -510,20 +500,8 @@ function App() {
           }}
         />
 
-        {/* 모바일 하단 네비게이션 (상위 카테고리) */}
         <div className="mobile-bottom-nav">
-          {(isAdmin ? [
-            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
-            { id: 'inventory', label: '재고', icon: <Box size={20} /> },
-            { id: 'orders', label: '발주', icon: <FileText size={20} /> },
-            { id: 'branches', label: '지점', icon: <MapPin size={20} /> },
-            { id: 'reports', label: '리포트', icon: <Receipt size={20} /> },
-          ] : [
-            { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={20} /> },
-            { id: 'inventory', label: '재고', icon: <Box size={20} /> },
-            { id: 'orders', label: '발주', icon: <FileText size={20} /> },
-            { id: 'branches', label: '특이사항', icon: <MapPin size={20} /> },
-          ]).map(tab => (
+          {(isAdmin ? adminTabs : employeeTabs).map(tab => (
             <button
               key={tab.id}
               className={`mobile-nav-item ${primaryTab === tab.id ? 'active' : ''}`}
@@ -850,6 +828,26 @@ function App() {
                 </button>
               </div>
               <p className="empty-state">기간을 선택해 엑셀로 다운로드하세요.</p>
+            </div>
+          )}
+
+          {primaryTab === 'stock-count' && (
+            <div className="main-content">
+              <StockCount 
+                items={items}
+                user={currentUser}
+                onSubmit={handleStockCountSubmit}
+              />
+            </div>
+          )}
+
+          {primaryTab === 'stock-count-status' && isAdmin && (
+            <div className="main-content">
+              <StockCountStatus 
+                branches={branchNames}
+                items={items}
+                transactions={transactions}
+              />
             </div>
           )}
         </div>
