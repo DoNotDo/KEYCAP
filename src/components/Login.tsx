@@ -74,6 +74,10 @@ export const Login = ({ onLogin }: LoginProps) => {
             로그인
           </button>
 
+          <button type="button" className="btn btn-secondary login-btn" style={{ marginTop: '10px' }}>
+            Gemini
+          </button>
+
           <div className="login-info">
             <p><strong>테스트 계정:</strong></p>
             <ul>

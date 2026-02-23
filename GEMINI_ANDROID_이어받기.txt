@@ -1,0 +1,9 @@
+Android Studio에서 Gemini가 KEYCAPS 작업을 이어받으려면 아래 문서를 열어서 Gemini에게 보여주세요.
+
+→ docs/ANDROID_STUDIO_GEMINI_권한_및_맥락.md
+
+위 문서에 다음이 정리되어 있습니다.
+- 사용자가 Gemini에게 Android 앱 개발 이어가기 권한 부여
+- Firebase 프로젝트 ID (management-9f7d8), 동일 Firestore·Auth 사용
+- Firestore 컬렉션·데이터 구조·지점 목록
+- 반드시 유지할 기능(지점별 재고, 와펜/키캡 보고, BOM·출고)
