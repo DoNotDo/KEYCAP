@@ -390,9 +390,11 @@ function App() {
           <div className="header-title">
             <Package size={32} />
             <h1>KEYCAPS - 실시간 재고 관리 시스템</h1>
-            {currentUser.branchName && (
+            {currentUser.role === 'admin' ? (
+              <span className="user-branch">(관리자)</span>
+            ) : currentUser.branchName ? (
               <span className="user-branch">({currentUser.branchName})</span>
-            )}
+            ) : null}
           </div>
           <div className="header-actions">
             {isAdmin && (

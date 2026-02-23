@@ -17,12 +17,17 @@ const convertFirebaseUserToAppUser = async (firebaseUser: FirebaseUser | null): 
     const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
     if (userDoc.exists()) {
       const data = userDoc.data();
-      return {
+      const appUser: User = {
         id: userDoc.id,
         ...data,
         createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
       } as User;
+      // 관리자는 지점이 없음 — Firestore에 잘못 저장된 branchName 무시
+      if (appUser.role === 'admin') {
+        appUser.branchName = undefined;
+      }
+      return appUser;
     }
   } catch (error) {
     console.error('Error converting Firebase user:', error);
@@ -127,7 +132,10 @@ export const auth = {
 
   getCurrentUser: (): User | null => {
     const data = localStorage.getItem('inventory_current_user');
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    const user = JSON.parse(data) as User;
+    if (user.role === 'admin') user.branchName = undefined;
+    return user;
   },
 
   onAuthStateChanged: (callback: (user: User | null) => void): (() => void) => {

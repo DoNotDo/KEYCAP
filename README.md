@@ -116,6 +116,7 @@ npm run build
 4. **배포 확인**
    - GitHub 저장소 → Actions 탭에서 배포 상태 확인
    - 약 1-2분 후 Firebase 사이트에서 변경사항 확인
+   - **배포 실패 시** (시크릿 오류) → [FIREBASE_TOKEN 시크릿 설정](docs/deployment/GITHUB_ACTIONS_FIREBASE_시크릿_설정.md) 참고
 
 #### 자동 배포 프로세스
 
