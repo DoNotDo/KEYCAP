@@ -9,14 +9,15 @@ interface BetaProductManageProps {
   productsByCategory: Map<string, BetaProduct[]>;
 }
 
-export function BetaProductManage({ categories, products, productsByCategory }: BetaProductManageProps) {
+export function BetaProductManage(props: BetaProductManageProps) {
+  const { categories, productsByCategory } = props;
   const [expandedCat, setExpandedCat] = useState<string | null>(categories[0]?.id ?? null);
   const [editingCategory, setEditingCategory] = useState<BetaCategory | null>(null);
   const [editingProduct, setEditingProduct] = useState<BetaProduct | null>(null);
   const [addingCategory, setAddingCategory] = useState(false);
   const [addingProduct, setAddingProduct] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [order, setOrder] = useState(0);
+  void props.products;
 
   const handleSaveCategory = async () => {
     if (!editingCategory || !name.trim()) return;

@@ -558,7 +558,7 @@ function App() {
 
           {primaryTab === 'stock-count-status' && isAdmin && <div className="main-content"><StockCountStatus branches={branchNames} items={items} transactions={transactions} /></div>}
 
-          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} materialOrders={materialOrders} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
+          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
         </div>
       </main>
 

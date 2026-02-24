@@ -3,11 +3,21 @@
 ## 현재 문제
 
 Firestore 보안 규칙이 인증된 사용자만 허용하도록 설정되어 있을 수 있습니다.
-하지만 초기 사용자 생성 시에는 인증되지 않은 상태입니다.
+또는 규칙이 너무 엄격해 **Permission denied** / 접근권한 오류가 날 수 있습니다.
 
 ## 해결 방법
 
-### Firebase Console에서 보안 규칙 수정
+### 1) 프로젝트의 규칙 파일로 배포 (권장)
+
+프로젝트 루트에 `firestore.rules`가 있습니다. 아래로 한 번 배포하면 규칙이 적용됩니다.
+
+```bash
+firebase deploy --only firestore
+```
+
+(호스팅만 배포할 때: `firebase deploy --only hosting`)
+
+### 2) Firebase Console에서 보안 규칙 수정
 
 1. [Firebase Console](https://console.firebase.google.com/) 접속
 2. 프로젝트 `management-9f7d8` 선택

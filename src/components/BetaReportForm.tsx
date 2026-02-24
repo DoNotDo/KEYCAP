@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { BetaWeeklyReport } from '../types';
 import { BetaCategory, BetaProduct } from '../types';
 import { BETA_LEVEL_MIN, BETA_LEVEL_MAX } from '../constants/beta';
@@ -59,7 +59,7 @@ export function BetaReportForm({
     setSales((prev) => ({ ...prev, [productId]: n }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {

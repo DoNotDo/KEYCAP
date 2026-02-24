@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, FormEvent } from 'react';
 import { InventoryItem, MaterialOrder, MaterialOrderStatus } from '../types';
 import { Calendar, CheckCircle, Package, PlusCircle, RefreshCw } from 'lucide-react';
 
@@ -92,7 +92,7 @@ export const MaterialOrderManagement = ({
     return Array.from(map.entries());
   }, [filteredOrders]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!formValues.materialItemId || formValues.quantity <= 0) {
       alert('부자재와 수량을 올바르게 입력해주세요.');

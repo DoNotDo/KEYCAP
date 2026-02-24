@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { MaterialOrder, InventoryItem } from '../types';
 
 interface MaterialOrderTimelineProps {
@@ -12,7 +13,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function MaterialOrderTimeline({ materialOrders, materialItems, weeks = 6 }: MaterialOrderTimelineProps) {
   const getMaterialName = (id: string) => materialItems.find(i => i.id === id)?.name || id;
 
-  const { startDate, endDate, days, materialRows } = useMemo(() => {
+  const { startDate, days, materialRows } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const start = new Date(today);
@@ -51,7 +52,7 @@ export function MaterialOrderTimeline({ materialOrders, materialItems, weeks = 6
       }),
     }));
 
-    return { startDate: start, endDate: end, days, materialRows };
+    return { startDate: start, days, materialRows };
   }, [materialOrders, materialItems, weeks]);
 
   const totalDays = days.length;
@@ -61,7 +62,7 @@ export function MaterialOrderTimeline({ materialOrders, materialItems, weeks = 6
     <div className="material-timeline">
       <h3 className="material-timeline-title">부자재 발주 · 입고 타임라인</h3>
       <div className="material-timeline-scroll">
-        <div className="material-timeline-grid" style={{ '--cols': totalDays } as React.CSSProperties}>
+        <div className="material-timeline-grid" style={{ '--cols': totalDays } as CSSProperties}>
           <div className="material-timeline-header">
             <div className="material-timeline-label material-timeline-label-fixed">항목</div>
             <div className="material-timeline-days">

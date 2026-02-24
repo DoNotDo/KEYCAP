@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { User, UserRole } from '../types';
 import { auth } from '../utils/auth';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
@@ -29,7 +29,7 @@ export const UserManagement = ({ onClose, onUpdate }: UserManagementProps) => {
     setUsers(users);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
     try {

@@ -19,15 +19,19 @@ interface BetaSectionProps {
   reportedBy?: string;
   items?: InventoryItem[];
   bomItems?: BOMItem[];
-  materialOrders?: MaterialOrder[];
   onAddMaterialOrder?: (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
-export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomItems = [], materialOrders = [], onAddMaterialOrder }: BetaSectionProps) {
+export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomItems = [], onAddMaterialOrder }: BetaSectionProps) {
   const { reports, loading: reportsLoading, saveReport, getReportForBranchAndWeek, currentWeekKey } = useBetaReports();
   const { branches, categories, products, productsByCategory, branchNames, loading: configLoading } = useBetaConfig();
   const [weekKey, setWeekKey] = useState(currentWeekKey);
-  const [betaTab, setBetaTab] = useState<'report' | 'dashboard' | 'auto-report' | 'production' | 'branches' | 'products'>('report');
+  const BETA_TAB_IDS = ['report', 'dashboard', 'auto-report', 'production', 'branches', 'products'] as const;
+  type BetaTabId = (typeof BETA_TAB_IDS)[number];
+  const [betaTab, setBetaTab] = useState<BetaTabId>('report');
+  const handleTabChange = (id: string) => {
+    if ((BETA_TAB_IDS as readonly string[]).includes(id)) setBetaTab(id as BetaTabId);
+  };
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const [seeding, setSeeding] = useState(false);
 
@@ -109,7 +113,7 @@ export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomIt
           )}
         </div>
       </div>
-      <TabNavigation tabs={tabs} activeTab={betaTab} onTabChange={(id) => setBetaTab(id)} />
+      <TabNavigation tabs={tabs} activeTab={betaTab} onTabChange={handleTabChange} />
       <div className="weekly-report-tab-content">
       {betaTab === 'report' && (
         <>
@@ -153,10 +157,8 @@ export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomIt
           reports={reports}
           products={products}
           categories={categories}
-          productsByCategory={productsByCategory}
           items={items}
           bomItems={bomItems}
-          materialOrders={materialOrders}
           onAddMaterialOrder={onAddMaterialOrder}
         />
       )}

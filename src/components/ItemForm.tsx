@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, MouseEvent } from 'react';
 import { InventoryItem, ItemType } from '../types';
 import { storage } from '../utils/storage';
 import { BetaProduct } from '../types';
@@ -53,7 +53,7 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
     }
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
+  const handleOverlayClick = (e: MouseEvent) => {
     if (e.target === e.currentTarget) {
       onCancel();
     }

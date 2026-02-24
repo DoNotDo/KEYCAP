@@ -10,18 +10,14 @@ import {
   MaterialRequirement,
   OrderRequestItem,
 } from '../types';
-import { storage } from '../utils/storage';
-import { getWeekKey } from '../constants/beta';
 
 interface ProductionOrderSectionProps {
   weekKey: string;
   reports: BetaWeeklyReport[];
   products: BetaProduct[];
   categories: BetaCategory[];
-  productsByCategory: Map<string, BetaProduct[]>;
   items: InventoryItem[];
   bomItems: BOMItem[];
-  materialOrders: MaterialOrder[];
   onAddMaterialOrder: (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
@@ -30,10 +26,8 @@ export function ProductionOrderSection({
   reports,
   products,
   categories,
-  productsByCategory,
   items,
   bomItems,
-  materialOrders,
   onAddMaterialOrder,
 }: ProductionOrderSectionProps) {
   const [created, setCreated] = useState(false);
@@ -99,7 +93,7 @@ export function ProductionOrderSection({
     const categoryMap = new Map<string, string>();
     materialItems.forEach(i => { if (i.category) categoryMap.set(i.id, i.category); });
     for (const req of orderRequestItems) {
-      await onAddMaterialOrder({
+      const orderPayload: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'> = {
         materialItemId: req.materialItemId,
         category: categoryMap.get(req.materialItemId) ?? '기타',
         quantity: req.quantity,
@@ -107,9 +101,8 @@ export function ProductionOrderSection({
         orderDate: new Date().toISOString().slice(0, 10),
         expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         notes: req.reason ?? '생산계획 자동',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      };
+      await onAddMaterialOrder(orderPayload);
     }
     setCreated(true);
   };
