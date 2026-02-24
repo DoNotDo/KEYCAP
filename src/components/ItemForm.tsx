@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect, MouseEvent } from 'react';
 import { InventoryItem, ItemType } from '../types';
 import { storage } from '../utils/storage';
 import { BetaProduct } from '../types';
+import { HOUSING_CATEGORY, HOUSING_SUBCATEGORIES } from '../constants/inventory';
 import { X } from 'lucide-react';
 
 interface ItemFormProps {
@@ -22,6 +23,7 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
     sku: item?.sku || '',
     imageUrl: item?.imageUrl || '',
     category: item?.category || '',
+    subCategory: item?.subCategory || '',
     type: (item?.type || defaultType || 'material') as ItemType,
     betaProductId: item?.betaProductId || '',
     quantity: item?.quantity || 0,
@@ -150,10 +152,25 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
               <input
                 type="text"
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value, subCategory: e.target.value === HOUSING_CATEGORY ? formData.subCategory : '' })}
                 required
               />
             </div>
+            {formData.type === 'finished' && formData.category === HOUSING_CATEGORY && (
+              <div className="form-group">
+                <label>분류 (하우징)</label>
+                <select
+                  className="form-select"
+                  value={formData.subCategory}
+                  onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
+                >
+                  <option value="">선택</option>
+                  {HOUSING_SUBCATEGORIES.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="form-row">

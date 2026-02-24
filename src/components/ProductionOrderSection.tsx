@@ -42,11 +42,9 @@ export function ProductionOrderSection({
     const plan: ProductionPlanItem[] = [];
     products.forEach(p => {
       const demand = reportsForWeek.reduce((sum, r) => sum + (r.sales?.[p.id] ?? r.levels?.[p.id] ?? 0), 0);
-      const finishedStock = finishedItems
-        .filter(i => i.betaProductId === p.id)
-        .reduce((sum, i) => sum + i.quantity, 0);
+      const finishedItem = finishedItems.find(i => i.id === p.id);
+      const finishedStock = finishedItem?.quantity ?? 0;
       const productionQty = Math.max(0, demand - finishedStock);
-      const finishedItem = finishedItems.find(i => i.betaProductId === p.id);
       plan.push({
         productId: p.id,
         productName: p.name,
@@ -54,7 +52,7 @@ export function ProductionOrderSection({
         demand,
         finishedStock,
         productionQty,
-        finishedItemId: finishedItem?.id,
+        finishedItemId: p.id,
       });
     });
     return plan;

@@ -349,6 +349,48 @@
 }
 
 /* 검색 박스 */
+.inventory-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+.inventory-filters .filter-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.inventory-filters .filter-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  font-size: var(--font-sm);
+  min-width: 160px;
+}
+
+.material-by-category { margin-top: var(--spacing-md); }
+.material-category-block { margin-bottom: var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+.material-category-header { display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; padding: var(--spacing-md) var(--spacing-lg); background: var(--color-bg-secondary); border: none; font-size: var(--font-base); font-weight: 600; cursor: pointer; text-align: left; }
+.material-category-header:hover { background: var(--color-bg-tertiary); }
+.material-category-name { flex: 1; }
+.material-category-count { color: var(--color-text-secondary); font-weight: 400; font-size: var(--font-sm); }
+.material-category-body { padding: 0; }
+.material-category-body .inventory-table { margin: 0; }
+.material-category-body .inventory-table td, .material-category-body .inventory-table th { padding: var(--spacing-sm) var(--spacing-md); }
+
+.order-vendors-schedule .section-desc { margin-bottom: var(--spacing-lg); color: var(--color-text-secondary); }
+.order-vendors-schedule .view-tabs { display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg); }
+.order-vendors-schedule .view-tabs button { padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); cursor: pointer; }
+.order-vendors-schedule .view-tabs button.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.vendor-by-category .vendor-category-block { margin-bottom: var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+.vendor-by-category .vendor-category-header { display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; padding: var(--spacing-md); background: var(--color-bg-secondary); border: none; font-weight: 600; cursor: pointer; text-align: left; }
+.vendor-by-category .vendor-category-header .badge { font-size: var(--font-sm); font-weight: 400; color: var(--color-text-secondary); margin-left: auto; }
+.vendor-by-category .vendor-category-body { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); padding: var(--spacing-lg); }
+.vendor-by-category .vendor-list h4, .vendor-by-category .materials-list h4 { margin: 0 0 var(--spacing-sm); font-size: var(--font-sm); }
+.vendor-by-category .empty-inline { margin: 0; font-size: var(--font-sm); color: var(--color-text-tertiary); }
+
 .search-box {
   display: flex;
   align-items: center;

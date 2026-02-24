@@ -25,13 +25,11 @@ if "%CURRENT%"=="" (
 echo 현재 브랜치: %CURRENT%
 echo.
 
-:: 변경사항 스테이징 및 커밋
+:: 변경사항 스테이징 및 커밋 (자동 메시지)
 set COMMIT_MSG=사이트 업데이트
 git add .
 git diff --cached --quiet
 if errorlevel 1 (
-    set /p COMMIT_MSG="커밋 메시지 (Enter=사이트 업데이트): "
-    if "%COMMIT_MSG%"=="" set COMMIT_MSG=사이트 업데이트
     git commit -m "%COMMIT_MSG%"
     if errorlevel 1 (
         echo ❌ 커밋 실패
@@ -42,8 +40,6 @@ if errorlevel 1 (
 ) else (
     git diff --quiet
     if errorlevel 1 (
-        set /p COMMIT_MSG="커밋 메시지 (Enter=사이트 업데이트): "
-        if "%COMMIT_MSG%"=="" set COMMIT_MSG=사이트 업데이트
         git commit -m "%COMMIT_MSG%"
         if errorlevel 1 (
             echo ❌ 커밋 실패
@@ -103,7 +99,7 @@ if errorlevel 1 (
 
 echo.
 echo ========================================
-echo   ✅ main 푸시 완료
+echo   ✅ KEYCAP 원격 저장소에 자동 푸시 완료
 echo ========================================
 echo.
 echo 1~2분 후 사이트에 반영됩니다.
@@ -111,4 +107,5 @@ echo   https://management-9f7d8.web.app
 echo.
 echo 배포 상태: GitHub 저장소 → Actions 탭
 echo.
-pause
+echo 아무 키나 누르면 종료합니다.
+pause >nul

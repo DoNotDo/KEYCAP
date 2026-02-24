@@ -6,6 +6,8 @@ export interface InventoryItem {
   sku?: string; // 상품 코드/번호
   imageUrl?: string; // 이미지 URL
   category: string;
+  /** 하우징 카테고리일 때만 사용: 컬러, LED청축/LED갈축/청축/갈축, 정사각형4구/직사각형4구/직사각형 2구 등 */
+  subCategory?: string;
   type: ItemType; // 재고 타입 추가
   branchName?: string; // 지점별 재고 구분
   betaProductId?: string; // 완성재고만: 주간보고 품목(BetaProduct)과 연동

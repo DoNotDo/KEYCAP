@@ -7,33 +7,26 @@ import { TransactionModal } from './components/TransactionModal';
 import { InventoryTable } from './components/InventoryTable';
 import { TransactionHistory } from './components/TransactionHistory';
 import { BOMForm } from './components/BOMForm';
-import { OrderForm } from './components/OrderForm';
 import { MaterialConsumptionPanel } from './components/MaterialConsumptionPanel';
 import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { BranchShortageDetail } from './components/BranchShortageDetail';
-import { OrderListWithTabs } from './components/OrderListWithTabs';
 import { OrderDetailModal } from './components/OrderDetailModal';
 import { TabNavigation } from './components/TabNavigation';
 import { StatsDetailModal } from './components/StatsDetailModal';
-import { BranchManagement } from './components/BranchManagement';
-import { BranchDetailModal } from './components/BranchDetailModal';
 import { BOMReceipt } from './components/BOMReceipt';
 import { ConsumptionHistory } from './components/ConsumptionHistory';
-import { ReportGenerator } from './components/ReportGenerator';
 import { ItemDetailModal } from './components/ItemDetailModal';
-import { OrderProcessingModal } from './components/OrderProcessingModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { MaterialOrderSummary } from './components/MaterialOrderSummary';
-import { BranchNotes } from './components/BranchNotes';
-import { BranchStockReport } from './components/BranchStockReport';
-import { StockCount } from './components/StockCount';
-import { StockCountStatus } from './components/StockCountStatus';
+import { MaterialInventoryByCategory } from './components/MaterialInventoryByCategory';
+import { OrderVendorsAndSchedule } from './components/OrderVendorsAndSchedule';
 import { BetaSection } from './components/BetaSection';
 import { BRANCH_LIST } from './constants/branches';
+import { HOUSING_CATEGORY, HOUSING_SUBCATEGORIES } from './constants/inventory';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
-import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, Receipt, Copy, CheckSquare, BarChart2 } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, BarChart2 } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -55,7 +48,6 @@ function App() {
     bomItems,
     orders,
     materialOrders,
-    branchNotes,
     loading,
     addItem,
     updateItem,
@@ -63,43 +55,31 @@ function App() {
     processTransaction,
     saveBOMForFinishedItem,
     getBOMByFinishedItem,
-    addOrder,
-    updateOrder,
     addMaterialOrder,
     updateMaterialOrder,
     deleteMaterialOrder,
-    saveBranchNote,
     calculateMaterialConsumption,
     calculateAllMaterialConsumption,
     calculateBranchShortages,
     consumptions,
-    shipOrder,
-    receiveOrder,
-    completeOrder,
     getStats,
-    processStockCount,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showBOMForm, setShowBOMForm] = useState(false);
-  const [showOrderForm, setShowOrderForm] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
   const [transactionItem, setTransactionItem] = useState<InventoryItem | undefined>();
   const [bomItem, setBomItem] = useState<InventoryItem | undefined>();
-  const [orderQuantity, setOrderQuantity] = useState(0);
-  const [orderFinishedItemId, setOrderFinishedItemId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | undefined>();
-  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'orders' | 'branches' | 'reports' | 'stock-count' | 'stock-count-status' | 'beta'>('dashboard');
+  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'bom' | 'orders' | 'beta'>('dashboard');
   const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
-  const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'branch-orders'>('branch-orders');
-  const [branchTab, setBranchTab] = useState<'notes' | 'management' | 'branch-report'>('notes');
+  const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'vendors'>('material-detail');
   const [selectedStatsType, setSelectedStatsType] = useState<'totalItems' | 'lowStock' | 'totalValue' | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<InventoryItem | undefined>();
-  const [selectedBranchForDetail, setSelectedBranchForDetail] = useState<string | undefined>();
-  const [showReportGenerator, setShowReportGenerator] = useState(false);
-  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [finishedCategoryFilter, setFinishedCategoryFilter] = useState<string>('all');
+  const [housingSubFilter, setHousingSubFilter] = useState<string>('all');
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
 
@@ -113,6 +93,21 @@ function App() {
   }, [items, isAdmin, branchName]);
   const branchFinishedItems = useMemo(() => branchItems.filter(item => item.type === 'finished'), [branchItems]);
   const branchMaterialItems = useMemo(() => branchItems.filter(item => item.type === 'material'), [branchItems]);
+  const currentFinishedList = isAdmin ? finishedItems : branchFinishedItems;
+  const finishedCategoriesList = useMemo(() => {
+    const set = new Set(currentFinishedList.map(i => i.category).filter(Boolean));
+    return Array.from(set).sort();
+  }, [currentFinishedList]);
+  const filteredFinishedItems = useMemo(() => {
+    let list = currentFinishedList;
+    if (finishedCategoryFilter !== 'all') {
+      list = list.filter(i => i.category === finishedCategoryFilter);
+      if (finishedCategoryFilter === HOUSING_CATEGORY && housingSubFilter !== 'all') {
+        list = list.filter(i => i.subCategory === housingSubFilter);
+      }
+    }
+    return list;
+  }, [currentFinishedList, finishedCategoryFilter, housingSubFilter]);
   const branchOrders = useMemo(() => orders.filter(order => order.branchName === branchName), [orders, branchName]);
   const branchConsumptions = useMemo(() => consumptions.filter(cons => cons.branchName === branchName), [consumptions, branchName]);
   const allConsumptions = useMemo(() => calculateAllMaterialConsumption(), [orders, items, bomItems]);
@@ -152,13 +147,7 @@ function App() {
   }, [branchConsumptions]);
 
   useEffect(() => {
-    if (isAdmin) {
-      setOrderTab('material-summary');
-    } else {
-      setOrderTab('branch-orders');
-      setInventoryTab('finished');
-      setBranchTab('notes');
-    }
+    if (isAdmin) setOrderTab('material-detail');
   }, [isAdmin]);
   
   const branchNames = useMemo(() => {
@@ -175,13 +164,6 @@ function App() {
     return Array.from(branchSet).sort((a, b) => (a === '본사' ? -1 : b === '본사' ? 1 : a.localeCompare(b)));
   }, [items, orders, currentUser?.branchName]);
   
-  const orderConsumptions = useMemo(() => {
-    if (orderFinishedItemId && orderQuantity > 0) {
-      return calculateMaterialConsumption(orderFinishedItemId, orderQuantity);
-    }
-    return [];
-  }, [orderFinishedItemId, orderQuantity, calculateMaterialConsumption]);
-
   const handleLogin = (user: User) => {
     setCurrentUser(user);
   };
@@ -244,22 +226,6 @@ function App() {
     setBomItem(undefined);
   };
 
-  const handleAddOrder = (branchName: string, finishedItemId: string, quantity: number) => {
-    const finalBranchName = currentUser?.role === 'employee' 
-      ? (currentUser.branchName || branchName)
-      : branchName;
-    
-    addOrder({
-      branchName: finalBranchName,
-      finishedItemId,
-      quantity,
-      orderDate: new Date().toISOString(),
-    });
-    setShowOrderForm(false);
-    setOrderFinishedItemId('');
-    setOrderQuantity(0);
-  };
-
   const handleAddMaterialOrder = (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
     addMaterialOrder({
       ...order,
@@ -298,61 +264,6 @@ function App() {
     }
   };
 
-  const handleOrderStatusUpdate = (orderId: string, status: Order['status'], notes?: string) => {
-    if (status === 'completed') {
-      completeOrder(orderId, currentUser?.username || 'system');
-    } else {
-      updateOrder(orderId, {
-        status,
-        processedAt: status !== 'pending' ? new Date().toISOString() : undefined,
-        processedBy: currentUser?.username,
-        notes,
-      });
-    }
-  };
-
-  const handleStartProcessing = (orderIds: string[]) => {
-    orderIds.forEach(orderId => {
-      updateOrder(orderId, {
-        status: 'processing',
-        processedAt: new Date().toISOString(),
-        processedBy: currentUser?.username,
-      });
-    });
-  };
-
-  const handleProcessOrder = () => {
-    setShowProcessingModal(true);
-  };
-
-  const handleShipOrder = (orderId: string, shippedQuantity: number) => {
-    try {
-      shipOrder(orderId, shippedQuantity, currentUser?.username || 'system');
-    } catch (error) {
-      alert(error instanceof Error ? error.message : '출고 처리 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleReceiveOrder = (orderId: string) => {
-    receiveOrder(orderId, currentUser?.username || 'system');
-  };
-
-  const handleViewOrderDetail = (order: Order) => {
-    setSelectedOrder(order);
-  };
-
-  const handleOrderFormChange = (finishedItemId: string, quantity: number) => {
-    setOrderFinishedItemId(finishedItemId);
-    setOrderQuantity(quantity);
-  };
-  
-  const handleStockCountSubmit = (counts: Map<string, number>) => {
-    if (!currentUser) return;
-    processStockCount(counts, currentUser.username);
-    alert('재고 실사 결과가 성공적으로 제출되었습니다.');
-    setPrimaryTab('inventory');
-  };
-
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
@@ -369,21 +280,15 @@ function App() {
   const adminTabs = [
     { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
+    { id: 'bom', label: 'BOM 설정', icon: <Wrench size={18} /> },
     { id: 'orders', label: '발주', icon: <FileText size={18} /> },
-    { id: 'branches', label: '지점', icon: <MapPin size={18} /> },
     { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
-    { id: 'reports', label: '리포트', icon: <Receipt size={18} /> },
-    { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
-    { id: 'stock-count-status', label: '보고 현황', icon: <CheckSquare size={18} /> },
   ];
 
   const employeeTabs = [
     { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
-    { id: 'orders', label: '발주', icon: <FileText size={18} /> },
-    { id: 'branches', label: '특이사항', icon: <MapPin size={18} /> },
     { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
-    { id: 'stock-count', label: '재고 실사', icon: <CheckSquare size={18} /> },
   ];
 
   return (
@@ -479,101 +384,102 @@ function App() {
                 <h2>{inventoryTab === 'material' ? '부자재 재고' : '완성재고'}</h2>
                 {isAdmin && <button className="btn btn-primary" onClick={() => { setEditingItem(undefined); setShowItemForm(true); }}><Plus size={18} />재고 추가</button>}
               </div>
-              <div className="search-box"><Search size={20} /><input type="text" placeholder="품목명, 카테고리로 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-              <InventoryTable items={(inventoryTab === 'material' ? (isAdmin ? materialItems : branchMaterialItems) : (isAdmin ? finishedItems : branchFinishedItems)).filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.category.toLowerCase().includes(searchTerm.toLowerCase()))} onEdit={isAdmin ? handleEditItem : undefined} onDelete={isAdmin ? deleteItem : undefined} onTransaction={handleTransaction} onBOMSettings={isAdmin && inventoryTab === 'finished' ? handleBOMSettings : undefined} onViewDetail={(item) => setSelectedItemForDetail(item)} searchTerm="" />
-              {inventoryTab === 'finished' && isAdmin && (
-                <div className="bom-status-section">
-                  <h3>BOM 설정 현황</h3>
-                  <div className="bom-status-grid">
-                    {finishedItems.map(item => {
-                      const itemBOM = getBOMByFinishedItem(item.id);
-                      return (
-                        <div key={item.id} className="bom-status-card">
-                          <div className="bom-status-header">
-                            <h4 className="bom-status-title">{item.name}{itemBOM.length > 0 && <span className="bom-status-subtitle">({itemBOM.length}개 부자재)</span>}</h4>
-                            {isAdmin && <button className="btn btn-secondary btn-small" onClick={() => handleBOMSettings(item)}>BOM 설정</button>}
-                          </div>
-                          {itemBOM.length > 0 ? <BOMReceipt finishedItem={item} bomItems={itemBOM} materialItems={materialItems} /> : <div className="bom-empty-notice"><p>⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.</p></div>}
-                        </div>
-                      );
-                    })}
-                  </div>
+              {inventoryTab === 'finished' && (
+                <div className="inventory-filters">
+                  <label className="filter-label">카테고리</label>
+                  <select className="filter-select" value={finishedCategoryFilter} onChange={(e) => { setFinishedCategoryFilter(e.target.value); setHousingSubFilter('all'); }}>
+                    <option value="all">전체</option>
+                    {finishedCategoriesList.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  {finishedCategoryFilter === HOUSING_CATEGORY && (
+                    <>
+                      <label className="filter-label">분류</label>
+                      <select className="filter-select" value={housingSubFilter} onChange={(e) => setHousingSubFilter(e.target.value)}>
+                        <option value="all">전체</option>
+                        {HOUSING_SUBCATEGORIES.map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
+              )}
+              <div className="search-box"><Search size={20} /><input type="text" placeholder="품목명, 카테고리로 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              {inventoryTab === 'material' ? (
+                <MaterialInventoryByCategory
+                  items={(isAdmin ? materialItems : branchMaterialItems).filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.category.toLowerCase().includes(searchTerm.toLowerCase()))}
+                  onEdit={isAdmin ? handleEditItem : undefined}
+                  onDelete={isAdmin ? deleteItem : undefined}
+                  onTransaction={handleTransaction}
+                  onViewDetail={(item) => setSelectedItemForDetail(item)}
+                />
+              ) : (
+                <InventoryTable items={filteredFinishedItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.category.toLowerCase().includes(searchTerm.toLowerCase()))} onEdit={isAdmin ? handleEditItem : undefined} onDelete={isAdmin ? deleteItem : undefined} onTransaction={handleTransaction} onBOMSettings={undefined} onViewDetail={(item) => setSelectedItemForDetail(item)} searchTerm="" />
               )}
               {selectedItemForDetail && <div className="detail-section"><ConsumptionHistory consumptions={consumptions} items={items} itemId={selectedItemForDetail.id} itemType={selectedItemForDetail.type} /></div>}
             </div>
           )}
 
-          {primaryTab === 'orders' && (
+          {primaryTab === 'bom' && isAdmin && (
             <div className="main-content">
-              {isAdmin && <TabNavigation tabs={[{ id: 'material-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },{ id: 'material-detail', label: '부자재 발주 내역', icon: <FileText size={18} /> },{ id: 'branch-orders', label: '지점 발주 내역', icon: <FileText size={18} /> }]} activeTab={orderTab} onTabChange={(tabId) => setOrderTab(tabId as typeof orderTab)} />}
-              {(!isAdmin || orderTab === 'branch-orders') && (
-                <>
-                  <div className="section-header">
-                    <h2>지점 발주 내역</h2>
-                    <div className="section-header-actions">
-                      <button className="btn btn-primary" onClick={() => setShowOrderForm(true)}><ShoppingCart size={18} />지점 주문 입력</button>
-                      {isAdmin && <button className="btn btn-secondary" onClick={() => setShowReportGenerator(true)}><FileText size={18} />보고서 생성</button>}
-                    </div>
-                  </div>
-                  {isAdmin && <div className="section-action-group"><button className="btn btn-primary" onClick={() => setShowProcessingModal(true)}><Package size={18} />발주 처리</button></div>}
-                  <OrderListWithTabs orders={orders} items={items} currentUser={currentUser} onStatusUpdate={handleOrderStatusUpdate} onViewDetail={handleViewOrderDetail} onProcess={handleProcessOrder} onReceive={handleReceiveOrder} />
-                </>
-              )}
-              {isAdmin && orderTab === 'material-detail' && (
+              <div className="section-header">
+                <h2>BOM 설정</h2>
+                <p className="section-desc">완성재고 1개당 필요한 부자재를 설정합니다. 출고 시 부자재 소모량이 자동 계산됩니다.</p>
+              </div>
+              <div className="bom-status-section">
+                <div className="bom-status-grid">
+                  {finishedItems.map(item => {
+                    const itemBOM = getBOMByFinishedItem(item.id);
+                    return (
+                      <div key={item.id} className="bom-status-card">
+                        <div className="bom-status-header">
+                          <h4 className="bom-status-title">{item.name}{itemBOM.length > 0 && <span className="bom-status-subtitle">({itemBOM.length}개 부자재)</span>}</h4>
+                          <button type="button" className="btn btn-secondary btn-small" onClick={() => handleBOMSettings(item)}>BOM 설정</button>
+                        </div>
+                        {itemBOM.length > 0 ? <BOMReceipt finishedItem={item} bomItems={itemBOM} materialItems={materialItems} /> : <div className="bom-empty-notice"><p>⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.</p></div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {primaryTab === 'orders' && isAdmin && (
+            <div className="main-content">
+              <TabNavigation tabs={[{ id: 'material-detail', label: '부자재 발주 내역', icon: <FileText size={18} /> },{ id: 'material-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },{ id: 'vendors', label: '카테고리별 업체·입고일정', icon: <MapPin size={18} /> }]} activeTab={orderTab} onTabChange={(tabId) => setOrderTab(tabId as typeof orderTab)} />
+              {orderTab === 'material-detail' && (
                 <>
                   <div className="section-header"><h2>부자재 발주 내역</h2></div>
                   <MaterialOrderManagement materialOrders={materialOrders} materialItems={materialItems} onAddOrder={handleAddMaterialOrder} onUpdateOrder={handleUpdateMaterialOrder} onDeleteOrder={handleDeleteMaterialOrder} onSyncCatalog={handleSyncCatalog} />
                 </>
               )}
-              {isAdmin && orderTab === 'material-summary' && (
+              {orderTab === 'material-summary' && (
                 <>
                   <div className="section-header"><h2>부자재 발주 요약</h2></div>
                   <MaterialOrderSummary materialOrders={materialOrders} materialItems={materialItems} />
                 </>
               )}
+              {orderTab === 'vendors' && (
+                <OrderVendorsAndSchedule materialOrders={materialOrders} materialItems={materialItems} />
+              )}
             </div>
           )}
 
-          {primaryTab === 'branches' && (
-            <div className="main-content">
-              {(isAdmin || true) && <TabNavigation tabs={[{ id: 'notes', label: '지점 특이사항', icon: <FileText size={18} /> },{ id: 'branch-report', label: '지점별 재고 보고', icon: <Copy size={18} /> },...(isAdmin ? [{ id: 'management', label: '지점 관리', icon: <MapPin size={18} /> }] : [])]} activeTab={branchTab} onTabChange={(tabId) => setBranchTab(tabId as typeof branchTab)} />}
-              {(!isAdmin || branchTab === 'notes') && <BranchNotes currentUser={currentUser} branches={branchNames} notes={branchNotes} onSave={saveBranchNote} />}
-              {branchTab === 'branch-report' && <BranchStockReport items={items} extraBranchNames={branchNames} currentUserBranch={currentUser?.branchName} />}
-              {isAdmin && branchTab === 'management' && <BranchManagement branchShortages={branchShortages} orders={orders} onBranchClick={setSelectedBranchShortage} onBranchDetail={setSelectedBranchForDetail} />}
-            </div>
-          )}
-
-          {primaryTab === 'reports' && isAdmin && (
-            <div className="main-content">
-              <div className="section-header">
-                <h2>보고서</h2>
-                <button className="btn btn-primary" onClick={() => setShowReportGenerator(true)}><Receipt size={18} />보고서 생성</button>
-              </div>
-              <p className="empty-state">기간을 선택해 엑셀로 다운로드하세요.</p>
-            </div>
-          )}
-
-          {primaryTab === 'stock-count' && currentUser && <div className="main-content"><StockCount items={items} user={currentUser} onSubmit={handleStockCountSubmit} /></div>}
-
-          {primaryTab === 'stock-count-status' && isAdmin && <div className="main-content"><StockCountStatus branches={branchNames} items={items} transactions={transactions} /></div>}
-
-          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
+          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} transactions={transactions} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
         </div>
       </main>
 
       {showItemForm && <ItemForm item={editingItem} defaultType={inventoryTab === 'finished' ? 'finished' : inventoryTab === 'material' ? 'material' : undefined} branches={branchNames} defaultBranchName={isAdmin ? '본사' : currentUser?.branchName} isAdmin={isAdmin} onSubmit={handleAddItem} onCancel={() => { setShowItemForm(false); setEditingItem(undefined); }} />}
       {showTransactionModal && transactionItem && <TransactionModal item={transactionItem} onProcess={handleProcessTransaction} onCancel={() => { setShowTransactionModal(false); setTransactionItem(undefined); }} />}
       {showBOMForm && bomItem && <BOMForm finishedItem={bomItem} bomItems={getBOMByFinishedItem(bomItem.id)} materialItems={materialItems} onSave={handleSaveBOM} onCancel={() => { setShowBOMForm(false); setBomItem(undefined); }} />}
-      {showOrderForm && currentUser && <OrderForm finishedItems={isAdmin ? finishedItems : branchFinishedItems} branches={branchNames} onProcess={handleAddOrder} consumptionResults={orderConsumptions} onChange={handleOrderFormChange} defaultBranchName={currentUser.branchName} isAdmin={isAdmin} onCancel={() => { setShowOrderForm(false); setOrderFinishedItemId(''); setOrderQuantity(0); }} />}
       {showUserManagement && <UserManagement onClose={() => setShowUserManagement(false)} onUpdate={() => { const user = auth.getCurrentUser(); setCurrentUser(user); }} />}
       {selectedBranchShortage && <BranchShortageDetail branchShortage={selectedBranchShortage} items={items} onClose={() => setSelectedBranchShortage(undefined)} />}
-      {selectedBranchForDetail && <BranchDetailModal branchName={selectedBranchForDetail} orders={orders} items={items} branchShortage={branchShortages.find(bs => bs.branchName === selectedBranchForDetail)} onClose={() => setSelectedBranchForDetail(undefined)} />}
       {selectedOrder && <OrderDetailModal order={selectedOrder} items={items} consumptions={calculateMaterialConsumption(selectedOrder.finishedItemId, selectedOrder.quantity)} onClose={() => setSelectedOrder(undefined)} />}
       {selectedStatsType && <StatsDetailModal type={selectedStatsType} stats={stats} items={items} onClose={() => setSelectedStatsType(null)} />}
       {selectedItemForDetail && <ItemDetailModal item={selectedItemForDetail} bomItems={bomItems} materialItems={materialItems} consumptions={consumptions} orders={orders} onClose={() => setSelectedItemForDetail(undefined)} />}
-      {showReportGenerator && <ReportGenerator orders={orders} consumptions={consumptions} items={items} onClose={() => setShowReportGenerator(false)} />}
-      {showProcessingModal && currentUser && <OrderProcessingModal orders={orders} items={items} bomItems={bomItems} onStartProcessing={handleStartProcessing} onShip={handleShipOrder} onReceive={handleReceiveOrder} onClose={() => setShowProcessingModal(false)} currentUserBranch={currentUser?.branchName} isAdmin={isAdmin} />}
     </div>
   );
 }

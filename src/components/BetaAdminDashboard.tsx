@@ -11,7 +11,7 @@ interface BetaAdminDashboardProps {
 }
 
 export function BetaAdminDashboard({ reports, weekKey, branchNames, products, categories, productsByCategory }: BetaAdminDashboardProps) {
-  const [view, setView] = useState<'by-branch' | 'by-product' | 'summary'>('by-branch');
+  const [view, setView] = useState<'by-branch' | 'by-product' | 'summary' | 'sales-summary'>('by-branch');
 
   const reportsForWeek = useMemo(
     () => reports.filter((r) => r.weekKey === weekKey),
@@ -59,12 +59,25 @@ export function BetaAdminDashboard({ reports, weekKey, branchNames, products, ca
     return low;
   }, [byProductLevel, products]);
 
+  const totalSales = useMemo(() => {
+    let s = 0;
+    byProductSales.forEach((v) => { s += v; });
+    return s;
+  }, [byProductSales]);
+
+  const preferenceRank = useMemo(() => {
+    return products
+      .map((p) => ({ id: p.id, name: p.name, sales: byProductSales.get(p.id) ?? 0 }))
+      .sort((a, b) => b.sales - a.sales);
+  }, [products, byProductSales]);
+
   return (
     <div className="beta-admin-dashboard">
       <h3>주간 현황 · {weekKey}</h3>
       <div className="beta-admin-tabs">
         <button type="button" className={view === 'by-branch' ? 'active' : ''} onClick={() => setView('by-branch')}>지점별 재고</button>
         <button type="button" className={view === 'by-product' ? 'active' : ''} onClick={() => setView('by-product')}>품목별 수량</button>
+        <button type="button" className={view === 'sales-summary' ? 'active' : ''} onClick={() => setView('sales-summary')}>판매 요약</button>
         <button type="button" className={view === 'summary' ? 'active' : ''} onClick={() => setView('summary')}>생산·출고 요약</button>
       </div>
 
@@ -135,6 +148,24 @@ export function BetaAdminDashboard({ reports, weekKey, branchNames, products, ca
         </div>
       )}
 
+      {view === 'sales-summary' && (
+        <div className="beta-summary-section beta-auto-report">
+          <h4>주간 매출(판매수량 합계)</h4>
+          <p className="beta-report-total">총 판매수량: <strong>{totalSales.toLocaleString()}</strong>개</p>
+          <p className="beta-report-desc">각 지점에서 입력한 주간 판매수량의 합입니다. 단가를 적용하면 매출액으로 환산할 수 있습니다.</p>
+          <h4>제품 선호도 (판매수량 순)</h4>
+          <ol className="beta-preference-list">
+            {preferenceRank.map(({ id, name, sales }, i) => (
+              <li key={id}>
+                <span className="rank">{i + 1}</span>
+                <span className="name">{name}</span>
+                <span className="sales">{sales.toLocaleString()}개</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {view === 'summary' && (
         <div className="beta-summary-section">
           <h4>생산·출고 참고</h4>
@@ -142,7 +173,7 @@ export function BetaAdminDashboard({ reports, weekKey, branchNames, products, ca
           <ul>
             {productionHint.length ? productionHint.map((name) => <li key={name}>{name}</li>) : <li>전 구간 양호</li>}
           </ul>
-          <p>품목별 주간 판매 합계는 위 &quot;품목별 수량&quot; 탭에서 확인하세요.</p>
+          <p>품목별 주간 판매 합계는 &quot;판매 요약&quot; 탭에서 확인하세요.</p>
         </div>
       )}
     </div>

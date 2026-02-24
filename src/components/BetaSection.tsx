@@ -2,16 +2,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { TabNavigation } from './TabNavigation';
 import { BetaReportForm } from './BetaReportForm';
 import { BetaAdminDashboard } from './BetaAdminDashboard';
-import { BetaAutoReport } from './BetaAutoReport';
 import { BetaBranchManage } from './BetaBranchManage';
-import { BetaProductManage } from './BetaProductManage';
 import { ProductionOrderSection } from './ProductionOrderSection';
 import { useBetaReports } from '../hooks/useBetaReports';
 import { useBetaConfig } from '../hooks/useBetaConfig';
 import { getWeekKey } from '../constants/beta';
 import { storage } from '../utils/storage';
-import { FileText, LayoutDashboard, BarChart2, MapPin, Package, ClipboardList } from 'lucide-react';
-import { InventoryItem, BOMItem, MaterialOrder } from '../types';
+import { StockCountStatus } from './StockCountStatus';
+import { FileText, LayoutDashboard, MapPin, ClipboardList, CheckSquare } from 'lucide-react';
+import { InventoryItem, BOMItem, MaterialOrder, Transaction } from '../types';
+import type { BetaCategory, BetaProduct } from '../types';
 
 interface BetaSectionProps {
   isAdmin: boolean;
@@ -19,14 +19,32 @@ interface BetaSectionProps {
   reportedBy?: string;
   items?: InventoryItem[];
   bomItems?: BOMItem[];
+  transactions?: Transaction[];
   onAddMaterialOrder?: (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
-export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomItems = [], onAddMaterialOrder }: BetaSectionProps) {
+export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomItems = [], transactions = [], onAddMaterialOrder }: BetaSectionProps) {
   const { reports, loading: reportsLoading, saveReport, getReportForBranchAndWeek, currentWeekKey } = useBetaReports();
-  const { branches, categories, products, productsByCategory, branchNames, loading: configLoading } = useBetaConfig();
+  const { branches, branchNames, loading: configLoading } = useBetaConfig();
+  const finishedItems = useMemo(() => items.filter((i) => i.type === 'finished'), [items]);
+  const categories = useMemo((): BetaCategory[] => {
+    const set = new Set(finishedItems.map((i) => i.category).filter(Boolean));
+    return Array.from(set).sort().map((name, idx) => ({ id: name, name, order: idx }));
+  }, [finishedItems]);
+  const products = useMemo((): BetaProduct[] => {
+    return finishedItems.map((i) => ({ id: i.id, name: i.name, categoryId: i.category, order: 0 }));
+  }, [finishedItems]);
+  const productsByCategory = useMemo(() => {
+    const map = new Map<string, BetaProduct[]>();
+    finishedItems.forEach((i) => {
+      const cat = i.category || '미분류';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push({ id: i.id, name: i.name, categoryId: i.category, order: 0 });
+    });
+    return map;
+  }, [finishedItems]);
   const [weekKey, setWeekKey] = useState(currentWeekKey);
-  const BETA_TAB_IDS = ['report', 'dashboard', 'auto-report', 'production', 'branches', 'products'] as const;
+  const BETA_TAB_IDS = ['report', 'dashboard', 'report-status', 'production', 'branches'] as const;
   type BetaTabId = (typeof BETA_TAB_IDS)[number];
   const [betaTab, setBetaTab] = useState<BetaTabId>('report');
   const handleTabChange = (id: string) => {
@@ -60,10 +78,9 @@ export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomIt
       { id: 'report' as const, label: '보고하기', icon: <FileText size={18} /> },
       ...(isAdmin ? [
         { id: 'dashboard' as const, label: '현황', icon: <LayoutDashboard size={18} /> },
-        { id: 'auto-report' as const, label: '자동 보고서', icon: <BarChart2 size={18} /> },
+        { id: 'report-status' as const, label: '보고 현황', icon: <CheckSquare size={18} /> },
         { id: 'production' as const, label: '생산·발주', icon: <ClipboardList size={18} /> },
         { id: 'branches' as const, label: '지점 설정', icon: <MapPin size={18} /> },
-        { id: 'products' as const, label: '품목 설정', icon: <Package size={18} /> },
       ] : []),
     ];
     return t;
@@ -148,8 +165,8 @@ export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomIt
           productsByCategory={productsByCategory}
         />
       )}
-      {betaTab === 'auto-report' && isAdmin && (
-        <BetaAutoReport reports={reports} weekKey={weekKey} products={products} />
+      {betaTab === 'report-status' && isAdmin && (
+        <StockCountStatus branches={branchNames} items={items} transactions={transactions} />
       )}
       {betaTab === 'production' && isAdmin && onAddMaterialOrder && (
         <ProductionOrderSection
@@ -163,13 +180,6 @@ export function BetaSection({ isAdmin, branchName, reportedBy, items = [], bomIt
         />
       )}
       {betaTab === 'branches' && isAdmin && <BetaBranchManage branches={branches} />}
-      {betaTab === 'products' && isAdmin && (
-        <BetaProductManage
-          categories={categories}
-          products={products}
-          productsByCategory={productsByCategory}
-        />
-      )}
       </div>
     </div>
   );

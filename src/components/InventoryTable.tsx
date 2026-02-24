@@ -93,7 +93,7 @@ export const InventoryTable = ({
                       )}
                     </div>
                   </td>
-                  <td>{item.category}</td>
+                  <td>{item.category}{item.subCategory ? ` · ${item.subCategory}` : ''}</td>
                   <td>
                     <span className={`type-badge ${item.type}`}>
                       {item.type === 'finished' ? '완성재고' : '부자재'}
@@ -247,7 +247,7 @@ export const InventoryTable = ({
               <div className="inventory-card-body">
                 <div className="inventory-card-row">
                   <span className="inventory-card-label">카테고리</span>
-                  <span className="inventory-card-value">{item.category}</span>
+                  <span className="inventory-card-value">{item.category}{item.subCategory ? ` · ${item.subCategory}` : ''}</span>
                 </div>
                 <div className="inventory-card-row">
                   <span className="inventory-card-label">타입</span>
