@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, BranchShortage, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
 import { storage } from '../utils/storage';
-import { HOUSING_CATEGORY, getHousingProductList } from '../constants/inventory';
+import {
+  HOUSING_CATEGORY,
+  HOUSING_COLORS,
+  HOUSING_SWITCHES,
+  HOUSING_MATERIAL_CATEGORY,
+  HOUSING_SHAPE_SWITCH_QUANTITY,
+  getHousingProductList,
+  getHousingCaseMaterialName,
+  getHousingSwitchMaterialName,
+  getHousingCaseMaterialId,
+  getHousingSwitchMaterialId,
+} from '../constants/inventory';
 
 export const useInventory = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -298,7 +309,70 @@ export const useInventory = () => {
     await storage.saveItems(updatedItems);
   }, [items]);
 
+  /** 하우징 BOM용 부자재 9종(케이스 5 + 스위치 4) 생성. 이미 있으면 건너뜀 */
+  const seedHousingMaterials = useCallback(async () => {
+    const now = new Date().toISOString();
+    const base: Omit<InventoryItem, 'id' | 'name' | 'category'> = {
+      type: 'material',
+      quantity: 0,
+      minQuantity: 0,
+      maxQuantity: 9999,
+      unit: '개',
+      price: 0,
+      location: '',
+      description: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const toAdd: InventoryItem[] = [];
+    for (const color of HOUSING_COLORS) {
+      const id = getHousingCaseMaterialId(color);
+      if (!items.some(i => i.id === id)) {
+        toAdd.push({ ...base, id, name: getHousingCaseMaterialName(color), category: HOUSING_MATERIAL_CATEGORY });
+      }
+    }
+    for (const sw of HOUSING_SWITCHES) {
+      const id = getHousingSwitchMaterialId(sw);
+      if (!items.some(i => i.id === id)) {
+        toAdd.push({ ...base, id, name: getHousingSwitchMaterialName(sw), category: HOUSING_MATERIAL_CATEGORY });
+      }
+    }
+    if (toAdd.length === 0) return;
+    const updatedItems = [...items, ...toAdd];
+    setItems(updatedItems);
+    await storage.saveItems(updatedItems);
+  }, [items]);
+
+  /** 하우징 60종에 BOM 설정: 케이스 1개 + 스위치(형태별 2/4개). 부자재 없으면 먼저 시드 */
+  const seedBOMForHousing = useCallback(async () => {
+    await seedHousingMaterials();
+    const housingItems = items
+      .filter(i => i.type === 'finished' && i.category === HOUSING_CATEGORY)
+      .sort((a, b) => {
+        const idxA = parseInt(a.id.replace('housing-', ''), 10) || 0;
+        const idxB = parseInt(b.id.replace('housing-', ''), 10) || 0;
+        return idxA - idxB;
+      });
+    const productList = getHousingProductList();
+    const otherBOM = bomItems.filter(bom => !housingItems.some(h => h.id === bom.finishedItemId));
+    const newBOM: BOMItem[] = [];
+    for (let idx = 0; idx < housingItems.length && idx < productList.length; idx++) {
+      const finishedItemId = housingItems[idx].id;
+      const product = productList[idx];
+      const switchQty = HOUSING_SHAPE_SWITCH_QUANTITY[product.shape];
+      const caseId = getHousingCaseMaterialId(product.color);
+      const switchId = getHousingSwitchMaterialId(product.switch);
+      newBOM.push(
+        { id: crypto.randomUUID(), finishedItemId, materialItemId: caseId, quantity: 1 },
+        { id: crypto.randomUUID(), finishedItemId, materialItemId: switchId, quantity: switchQty },
+      );
+    }
+    const updatedBOM = [...otherBOM, ...newBOM];
+    setBomItems(updatedBOM);
+    await storage.saveBOM(updatedBOM);
+  }, [items, bomItems, seedHousingMaterials]);
+
   return {
-    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, refresh: loadData,
+    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, seedHousingMaterials, seedBOMForHousing, refresh: loadData,
   };
 };

@@ -43,3 +43,34 @@ export const HOUSING_SUBCATEGORIES = [
 ] as const;
 
 export type HousingSubCategory = (typeof HOUSING_SUBCATEGORIES)[number];
+
+/** 하우징 BOM용 부자재 카테고리 */
+export const HOUSING_MATERIAL_CATEGORY = '하우징 부자재';
+
+/** 형태별 스위치 개수 (완성품 1개당) */
+export const HOUSING_SHAPE_SWITCH_QUANTITY: Record<HousingShape, number> = {
+  '정사각4구': 4,
+  '직사각4구': 4,
+  '직사각2구': 2,
+};
+
+/** 케이스 부자재 이름 (컬러별) */
+export function getHousingCaseMaterialName(color: HousingColor): string {
+  return `케이스-${color}`;
+}
+
+/** 스위치 부자재 이름 (스위치 타입별) */
+export function getHousingSwitchMaterialName(sw: HousingSwitch): string {
+  return `스위치-${sw}`;
+}
+
+/** BOM 시드용 부자재 ID 접두사 (케이스/스위치 이름 → id) */
+const HOUSING_MAT_ID_PREFIX = 'housing-mat-';
+export function getHousingCaseMaterialId(color: HousingColor): string {
+  const map: Record<HousingColor, string> = { 화이트: 'white', 핑크: 'pink', 퍼플: 'purple', 블루: 'blue', 그린: 'green' };
+  return HOUSING_MAT_ID_PREFIX + 'case-' + map[color];
+}
+export function getHousingSwitchMaterialId(sw: HousingSwitch): string {
+  const map: Record<HousingSwitch, string> = { 청축: 'chung', 갈축: 'gal', LED청축: 'ledchung', LED갈축: 'ledgal' };
+  return HOUSING_MAT_ID_PREFIX + 'switch-' + map[sw];
+}

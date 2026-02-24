@@ -64,6 +64,7 @@ function App() {
     consumptions,
     getStats,
     seedHousingItems,
+    seedBOMForHousing,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -86,6 +87,7 @@ function App() {
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
   const hasSeededHousingRef = useRef(false);
+  const hasSeededBOMRef = useRef(false);
 
   // URL ?seedHousing=1 로 접속 시 관리자일 때 하우징 60종 자동 생성 (한 번만)
   useEffect(() => {
@@ -96,6 +98,16 @@ function App() {
       window.history.replaceState({}, '', window.location.pathname + window.location.hash || '');
     });
   }, [currentUser, isAdmin, seedHousingItems]);
+
+  // URL ?seedBOM=1 로 접속 시 관리자일 때 하우징 60종 BOM 자동 설정 (한 번만)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('seedBOM') !== '1' || !currentUser || !isAdmin || hasSeededBOMRef.current) return;
+    hasSeededBOMRef.current = true;
+    seedBOMForHousing().then(() => {
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash || '');
+    });
+  }, [currentUser, isAdmin, seedBOMForHousing]);
 
   const stats = getStats();
   const finishedItems = useMemo(() => items.filter(item => item.type === 'finished'), [items]);
@@ -436,6 +448,12 @@ function App() {
                           setHousingShapeFilter('all');
                         }}>
                           하우징 60종 일괄 생성
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={async () => {
+                          if (!confirm('하우징 60종에 BOM을 설정합니다. (케이스 1개 + 스위치 2/4개, 부자재 없으면 자동 생성) 계속할까요?')) return;
+                          await seedBOMForHousing();
+                        }}>
+                          BOM 설정 (하우징 60종)
                         </button>
                       )}
                     </>
