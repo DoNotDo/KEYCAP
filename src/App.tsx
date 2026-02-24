@@ -439,22 +439,24 @@ function App() {
                         {HOUSING_SHAPES.map(v => (<option key={v} value={v}>{v}</option>))}
                       </select>
                       {isAdmin && (
-                        <button type="button" className="btn btn-secondary" onClick={async () => {
-                          if (!confirm('기존 하우징 완성재고를 삭제하고 컬러×스위치×형태 60종을 새로 만들까요?')) return;
-                          await seedHousingItems();
-                          setFinishedCategoryFilter(HOUSING_CATEGORY);
-                          setHousingColorFilter('all');
-                          setHousingSwitchFilter('all');
-                          setHousingShapeFilter('all');
-                        }}>
-                          하우징 60종 일괄 생성
-                        </button>
-                        <button type="button" className="btn btn-secondary" onClick={async () => {
-                          if (!confirm('하우징 60종에 BOM을 설정합니다. (케이스 1개 + 스위치 2/4개, 부자재 없으면 자동 생성) 계속할까요?')) return;
-                          await seedBOMForHousing();
-                        }}>
-                          BOM 설정 (하우징 60종)
-                        </button>
+                        <>
+                          <button type="button" className="btn btn-secondary" onClick={async () => {
+                            if (!confirm('기존 하우징 완성재고를 삭제하고 컬러×스위치×형태 60종을 새로 만들까요?')) return;
+                            await seedHousingItems();
+                            setFinishedCategoryFilter(HOUSING_CATEGORY);
+                            setHousingColorFilter('all');
+                            setHousingSwitchFilter('all');
+                            setHousingShapeFilter('all');
+                          }}>
+                            하우징 60종 일괄 생성
+                          </button>
+                          <button type="button" className="btn btn-secondary" onClick={async () => {
+                            if (!confirm('하우징 60종에 BOM을 설정합니다. (케이스 1개 + 스위치 2/4개, 부자재 없으면 자동 생성) 계속할까요?')) return;
+                            await seedBOMForHousing();
+                          }}>
+                            BOM 설정 (하우징 60종)
+                          </button>
+                        </>
                       )}
                     </>
                   )}
