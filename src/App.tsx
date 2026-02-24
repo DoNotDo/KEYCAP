@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useInventory } from './hooks/useInventory';
 import { InventoryItem, BOMItem, User, BranchShortage, Order, MaterialOrder } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -85,6 +85,17 @@ function App() {
   const [housingShapeFilter, setHousingShapeFilter] = useState<string>('all');
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
+  const hasSeededHousingRef = useRef(false);
+
+  // URL ?seedHousing=1 로 접속 시 관리자일 때 하우징 60종 자동 생성 (한 번만)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('seedHousing') !== '1' || !currentUser || !isAdmin || hasSeededHousingRef.current) return;
+    hasSeededHousingRef.current = true;
+    seedHousingItems().then(() => {
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash || '');
+    });
+  }, [currentUser, isAdmin, seedHousingItems]);
 
   const stats = getStats();
   const finishedItems = useMemo(() => items.filter(item => item.type === 'finished'), [items]);
