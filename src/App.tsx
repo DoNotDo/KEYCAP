@@ -23,7 +23,7 @@ import { MaterialInventoryByCategory } from './components/MaterialInventoryByCat
 import { OrderVendorsAndSchedule } from './components/OrderVendorsAndSchedule';
 import { BetaSection } from './components/BetaSection';
 import { BRANCH_LIST } from './constants/branches';
-import { HOUSING_CATEGORY, HOUSING_SUBCATEGORIES } from './constants/inventory';
+import { HOUSING_CATEGORY, HOUSING_COLORS, HOUSING_SWITCHES, HOUSING_SHAPES } from './constants/inventory';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, BarChart2 } from 'lucide-react';
@@ -63,6 +63,7 @@ function App() {
     calculateBranchShortages,
     consumptions,
     getStats,
+    seedHousingItems,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -79,7 +80,9 @@ function App() {
   const [selectedStatsType, setSelectedStatsType] = useState<'totalItems' | 'lowStock' | 'totalValue' | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<InventoryItem | undefined>();
   const [finishedCategoryFilter, setFinishedCategoryFilter] = useState<string>('all');
-  const [housingSubFilter, setHousingSubFilter] = useState<string>('all');
+  const [housingColorFilter, setHousingColorFilter] = useState<string>('all');
+  const [housingSwitchFilter, setHousingSwitchFilter] = useState<string>('all');
+  const [housingShapeFilter, setHousingShapeFilter] = useState<string>('all');
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
 
@@ -102,12 +105,14 @@ function App() {
     let list = currentFinishedList;
     if (finishedCategoryFilter !== 'all') {
       list = list.filter(i => i.category === finishedCategoryFilter);
-      if (finishedCategoryFilter === HOUSING_CATEGORY && housingSubFilter !== 'all') {
-        list = list.filter(i => i.subCategory === housingSubFilter);
+      if (finishedCategoryFilter === HOUSING_CATEGORY) {
+        if (housingColorFilter !== 'all') list = list.filter(i => i.name.includes(housingColorFilter));
+        if (housingSwitchFilter !== 'all') list = list.filter(i => i.name.includes(housingSwitchFilter));
+        if (housingShapeFilter !== 'all') list = list.filter(i => i.name.includes(housingShapeFilter));
       }
     }
     return list;
-  }, [currentFinishedList, finishedCategoryFilter, housingSubFilter]);
+  }, [currentFinishedList, finishedCategoryFilter, housingColorFilter, housingSwitchFilter, housingShapeFilter]);
   const branchOrders = useMemo(() => orders.filter(order => order.branchName === branchName), [orders, branchName]);
   const branchConsumptions = useMemo(() => consumptions.filter(cons => cons.branchName === branchName), [consumptions, branchName]);
   const allConsumptions = useMemo(() => calculateAllMaterialConsumption(), [orders, items, bomItems]);
@@ -387,7 +392,7 @@ function App() {
               {inventoryTab === 'finished' && (
                 <div className="inventory-filters">
                   <label className="filter-label">카테고리</label>
-                  <select className="filter-select" value={finishedCategoryFilter} onChange={(e) => { setFinishedCategoryFilter(e.target.value); setHousingSubFilter('all'); }}>
+                  <select className="filter-select" value={finishedCategoryFilter} onChange={(e) => { setFinishedCategoryFilter(e.target.value); setHousingColorFilter('all'); setHousingSwitchFilter('all'); setHousingShapeFilter('all'); }}>
                     <option value="all">전체</option>
                     {finishedCategoriesList.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -395,13 +400,33 @@ function App() {
                   </select>
                   {finishedCategoryFilter === HOUSING_CATEGORY && (
                     <>
-                      <label className="filter-label">분류</label>
-                      <select className="filter-select" value={housingSubFilter} onChange={(e) => setHousingSubFilter(e.target.value)}>
+                      <label className="filter-label">컬러</label>
+                      <select className="filter-select" value={housingColorFilter} onChange={(e) => setHousingColorFilter(e.target.value)}>
                         <option value="all">전체</option>
-                        {HOUSING_SUBCATEGORIES.map(sub => (
-                          <option key={sub} value={sub}>{sub}</option>
-                        ))}
+                        {HOUSING_COLORS.map(v => (<option key={v} value={v}>{v}</option>))}
                       </select>
+                      <label className="filter-label">스위치</label>
+                      <select className="filter-select" value={housingSwitchFilter} onChange={(e) => setHousingSwitchFilter(e.target.value)}>
+                        <option value="all">전체</option>
+                        {HOUSING_SWITCHES.map(v => (<option key={v} value={v}>{v}</option>))}
+                      </select>
+                      <label className="filter-label">형태</label>
+                      <select className="filter-select" value={housingShapeFilter} onChange={(e) => setHousingShapeFilter(e.target.value)}>
+                        <option value="all">전체</option>
+                        {HOUSING_SHAPES.map(v => (<option key={v} value={v}>{v}</option>))}
+                      </select>
+                      {isAdmin && (
+                        <button type="button" className="btn btn-secondary" onClick={async () => {
+                          if (!confirm('기존 하우징 완성재고를 삭제하고 컬러×스위치×형태 60종을 새로 만들까요?')) return;
+                          await seedHousingItems();
+                          setFinishedCategoryFilter(HOUSING_CATEGORY);
+                          setHousingColorFilter('all');
+                          setHousingSwitchFilter('all');
+                          setHousingShapeFilter('all');
+                        }}>
+                          하우징 60종 일괄 생성
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, BranchShortage, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
 import { storage } from '../utils/storage';
+import { HOUSING_CATEGORY, getHousingProductList } from '../constants/inventory';
 
 export const useInventory = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -272,7 +273,32 @@ export const useInventory = () => {
     pendingOrders: orders.filter(order => order.status === 'pending').length,
   }), [items, transactions, orders]);
 
+  /** 기존 하우징 완성재고 삭제 후 컬러×스위치×형태 60종 일괄 생성 */
+  const seedHousingItems = useCallback(async () => {
+    const nonHousing = items.filter(i => !(i.category === HOUSING_CATEGORY && i.type === 'finished'));
+    const now = new Date().toISOString();
+    const productList = getHousingProductList();
+    const newItems: InventoryItem[] = productList.map((p, idx) => ({
+      id: `housing-${idx}`,
+      name: p.name,
+      category: HOUSING_CATEGORY,
+      type: 'finished',
+      quantity: 0,
+      minQuantity: 0,
+      maxQuantity: 9999,
+      unit: '개',
+      price: 0,
+      location: '',
+      description: '',
+      createdAt: now,
+      updatedAt: now,
+    }));
+    const updatedItems = [...nonHousing, ...newItems];
+    setItems(updatedItems);
+    await storage.saveItems(updatedItems);
+  }, [items]);
+
   return {
-    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, refresh: loadData,
+    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, refresh: loadData,
   };
 };
