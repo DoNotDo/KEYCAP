@@ -1,5 +1,6 @@
 import { useMemo, useState, FormEvent } from 'react';
 import { InventoryItem, MaterialOrder, MaterialOrderStatus } from '../types';
+import { OUTSOURCING_CATEGORIES } from '../constants/inventory';
 import { Calendar, CheckCircle, Package, PlusCircle, RefreshCw } from 'lucide-react';
 
 interface MaterialOrderManagementProps {
@@ -37,6 +38,7 @@ export const MaterialOrderManagement = ({
 
   const [formValues, setFormValues] = useState({
     materialItemId: '',
+    categoryOverride: '' as string,
     quantity: 0,
     status: 'ordered' as MaterialOrderStatus,
     orderDate: new Date().toISOString().slice(0, 10),
@@ -48,6 +50,7 @@ export const MaterialOrderManagement = ({
 
   const categories = useMemo(() => {
     const set = new Set(materialItems.map(item => item.category).filter(Boolean));
+    OUTSOURCING_CATEGORIES.forEach(c => set.add(c));
     return Array.from(set).sort();
   }, [materialItems]);
 
@@ -98,7 +101,7 @@ export const MaterialOrderManagement = ({
       alert('부자재와 수량을 올바르게 입력해주세요.');
       return;
     }
-    const category = getMaterialCategory(formValues.materialItemId);
+    const category = formValues.categoryOverride || getMaterialCategory(formValues.materialItemId);
     onAddOrder({
       materialItemId: formValues.materialItemId,
       category,
@@ -112,6 +115,7 @@ export const MaterialOrderManagement = ({
     });
     setFormValues({
       materialItemId: '',
+      categoryOverride: '',
       quantity: 0,
       status: 'ordered',
       orderDate: new Date().toISOString().slice(0, 10),
@@ -202,6 +206,28 @@ export const MaterialOrderManagement = ({
                   {item.name} (재고: {item.quantity.toLocaleString()} {item.unit})
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>카테고리 (외주 구분)</label>
+            <select
+              className="form-select"
+              value={formValues.categoryOverride}
+              onChange={(e) => setFormValues({ ...formValues, categoryOverride: e.target.value })}
+            >
+              <option value="">부자재 기준 자동</option>
+              <optgroup label="외주">
+                {OUTSOURCING_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </optgroup>
+              {categories.filter(c => !(OUTSOURCING_CATEGORIES as readonly string[]).includes(c)).length > 0 && (
+                <optgroup label="기타">
+                  {categories.filter(c => !(OUTSOURCING_CATEGORIES as readonly string[]).includes(c)).map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
           <div className="form-group">

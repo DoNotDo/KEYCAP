@@ -15,6 +15,7 @@ import { OrderDetailModal } from './components/OrderDetailModal';
 import { TabNavigation } from './components/TabNavigation';
 import { StatsDetailModal } from './components/StatsDetailModal';
 import { BOMReceipt } from './components/BOMReceipt';
+import { BOMByMaterialEditor } from './components/BOMByMaterialEditor';
 import { ConsumptionHistory } from './components/ConsumptionHistory';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { MaterialOrderManagement } from './components/MaterialOrderManagement';
@@ -55,6 +56,8 @@ function App() {
     processTransaction,
     saveBOMForFinishedItem,
     getBOMByFinishedItem,
+    getBOMByMaterial,
+    saveBOMByMaterial,
     addMaterialOrder,
     updateMaterialOrder,
     deleteMaterialOrder,
@@ -65,6 +68,7 @@ function App() {
     getStats,
     seedHousingItems,
     seedBOMForHousing,
+    seedOptionalMaterials,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -84,6 +88,7 @@ function App() {
   const [housingColorFilter, setHousingColorFilter] = useState<string>('all');
   const [housingSwitchFilter, setHousingSwitchFilter] = useState<string>('all');
   const [housingShapeFilter, setHousingShapeFilter] = useState<string>('all');
+  const [bomViewMode, setBomViewMode] = useState<'finished' | 'material'>('finished');
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'admin';
   const hasSeededHousingRef = useRef(false);
@@ -131,7 +136,15 @@ function App() {
       if (finishedCategoryFilter === HOUSING_CATEGORY) {
         if (housingColorFilter !== 'all') list = list.filter(i => i.name.includes(housingColorFilter));
         if (housingSwitchFilter !== 'all') list = list.filter(i => i.name.includes(housingSwitchFilter));
-        if (housingShapeFilter !== 'all') list = list.filter(i => i.name.includes(housingShapeFilter));
+        if (housingShapeFilter !== 'all') {
+          const shape = housingShapeFilter;
+          list = list.filter(i => {
+            if (shape === '정사각4구') return i.name.includes('정사각');
+            if (shape === '직사각4구') return i.name.includes('직사각') && (i.name.includes('4') || i.name.includes('4구'));
+            if (shape === '직사각2구') return i.name.includes('직사각') && (i.name.includes('2') || i.name.includes('2구'));
+            return i.name.includes(shape);
+          });
+        }
       }
     }
     return list;
@@ -410,7 +423,14 @@ function App() {
               {isAdmin ? <TabNavigation tabs={[{ id: 'finished', label: '완성재고', icon: <Box size={18} /> },{ id: 'material', label: '부자재 재고', icon: <Wrench size={18} /> }]} activeTab={inventoryTab} onTabChange={(tabId) => { setInventoryTab(tabId as typeof inventoryTab); setSelectedItemForDetail(undefined); }} /> : null}
               <div className="section-header">
                 <h2>{inventoryTab === 'material' ? '부자재 재고' : '완성재고'}</h2>
-                {isAdmin && <button className="btn btn-primary" onClick={() => { setEditingItem(undefined); setShowItemForm(true); }}><Plus size={18} />재고 추가</button>}
+                <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+                  {isAdmin && <button className="btn btn-primary" onClick={() => { setEditingItem(undefined); setShowItemForm(true); }}><Plus size={18} />재고 추가</button>}
+                  {isAdmin && inventoryTab === 'material' && (
+                    <button type="button" className="btn btn-secondary" onClick={async () => { if (confirm('고리-핑크, 하우징 지퍼백(3종), 무지 키캡(5종)을 추가할까요? 없을 때만 추가됩니다.')) await seedOptionalMaterials(); }}>
+                      고리·지퍼백·무지키캡 추가
+                    </button>
+                  )}
+                </div>
               </div>
               {inventoryTab === 'finished' && (
                 <div className="inventory-filters">
@@ -484,22 +504,40 @@ function App() {
                 <h2>BOM 설정</h2>
                 <p className="section-desc">완성재고 1개당 필요한 부자재를 설정합니다. 출고 시 부자재 소모량이 자동 계산됩니다.</p>
               </div>
-              <div className="bom-status-section">
-                <div className="bom-status-grid">
-                  {finishedItems.map(item => {
-                    const itemBOM = getBOMByFinishedItem(item.id);
-                    return (
-                      <div key={item.id} className="bom-status-card">
-                        <div className="bom-status-header">
-                          <h4 className="bom-status-title">{item.name}{itemBOM.length > 0 && <span className="bom-status-subtitle">({itemBOM.length}개 부자재)</span>}</h4>
-                          <button type="button" className="btn btn-secondary btn-small" onClick={() => handleBOMSettings(item)}>BOM 설정</button>
-                        </div>
-                        {itemBOM.length > 0 ? <BOMReceipt finishedItem={item} bomItems={itemBOM} materialItems={materialItems} /> : <div className="bom-empty-notice"><p>⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.</p></div>}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="view-tabs" style={{ marginBottom: 'var(--spacing-lg)' }}>
+                <button type="button" className={bomViewMode === 'finished' ? 'active' : ''} onClick={() => setBomViewMode('finished')}>
+                  완성재고 기준
+                </button>
+                <button type="button" className={bomViewMode === 'material' ? 'active' : ''} onClick={() => setBomViewMode('material')}>
+                  부자재 기준 (체크박스)
+                </button>
               </div>
+              {bomViewMode === 'finished' && (
+                <div className="bom-status-section">
+                  <div className="bom-status-grid">
+                    {finishedItems.map(item => {
+                      const itemBOM = getBOMByFinishedItem(item.id);
+                      return (
+                        <div key={item.id} className="bom-status-card">
+                          <div className="bom-status-header">
+                            <h4 className="bom-status-title">{item.name}{itemBOM.length > 0 && <span className="bom-status-subtitle">({itemBOM.length}개 부자재)</span>}</h4>
+                            <button type="button" className="btn btn-secondary btn-small" onClick={() => handleBOMSettings(item)}>BOM 설정</button>
+                          </div>
+                          {itemBOM.length > 0 ? <BOMReceipt finishedItem={item} bomItems={itemBOM} materialItems={materialItems} /> : <div className="bom-empty-notice"><p>⚠️ BOM이 설정되지 않았습니다. 완성재고 출고 시 부자재 소모량이 계산되지 않습니다.</p></div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {bomViewMode === 'material' && (
+                <BOMByMaterialEditor
+                  materialItems={materialItems}
+                  finishedItems={finishedItems}
+                  getBOMByMaterial={getBOMByMaterial}
+                  onSave={saveBOMByMaterial}
+                />
+              )}
             </div>
           )}
 

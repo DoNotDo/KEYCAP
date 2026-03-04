@@ -5,7 +5,11 @@ import {
   HOUSING_CATEGORY,
   HOUSING_COLORS,
   HOUSING_SWITCHES,
-  HOUSING_MATERIAL_CATEGORY,
+  HOUSING_EXTRA_NAMES,
+  ZIPBAG_CATEGORY,
+  ZIPBAG_ITEMS,
+  PLAIN_KEYCAP_CATEGORY,
+  PLAIN_KEYCAP_COLORS,
   HOUSING_SHAPE_SWITCH_QUANTITY,
   getHousingProductList,
   getHousingCaseMaterialName,
@@ -116,6 +120,20 @@ export const useInventory = () => {
 
   const getBOMByFinishedItem = useCallback((finishedItemId: string): BOMItem[] => {
     return bomItems.filter(bom => bom.finishedItemId === finishedItemId);
+  }, [bomItems]);
+
+  const getBOMByMaterial = useCallback((materialItemId: string): BOMItem[] => {
+    return bomItems.filter(bom => bom.materialItemId === materialItemId);
+  }, [bomItems]);
+
+  const saveBOMByMaterial = useCallback(async (materialItemId: string, list: { finishedItemId: string; quantity: number }[]) => {
+    const other = bomItems.filter(bom => bom.materialItemId !== materialItemId);
+    const newBOM: BOMItem[] = list
+      .filter(row => row.quantity > 0)
+      .map(row => ({ id: crypto.randomUUID(), finishedItemId: row.finishedItemId, materialItemId, quantity: row.quantity }));
+    const updatedBOM = [...other, ...newBOM];
+    setBomItems(updatedBOM);
+    await storage.saveBOM(updatedBOM);
   }, [bomItems]);
 
   const addOrder = useCallback(async (order: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
@@ -284,26 +302,43 @@ export const useInventory = () => {
     pendingOrders: orders.filter(order => order.status === 'pending').length,
   }), [items, transactions, orders]);
 
-  /** 기존 하우징 완성재고 삭제 후 컬러×스위치×형태 60종 일괄 생성 */
+  /** 기존 하우징 완성재고 삭제 후 60종 + 핑크 3종(63종) 일괄 생성 */
   const seedHousingItems = useCallback(async () => {
     const nonHousing = items.filter(i => !(i.category === HOUSING_CATEGORY && i.type === 'finished'));
     const now = new Date().toISOString();
     const productList = getHousingProductList();
-    const newItems: InventoryItem[] = productList.map((p, idx) => ({
-      id: `housing-${idx}`,
-      name: p.name,
-      category: HOUSING_CATEGORY,
-      type: 'finished',
-      quantity: 0,
-      minQuantity: 0,
-      maxQuantity: 9999,
-      unit: '개',
-      price: 0,
-      location: '',
-      description: '',
-      createdAt: now,
-      updatedAt: now,
-    }));
+    const newItems: InventoryItem[] = [
+      ...productList.map((p, idx) => ({
+        id: `housing-${idx}`,
+        name: p.name,
+        category: HOUSING_CATEGORY,
+        type: 'finished' as const,
+        quantity: 0,
+        minQuantity: 0,
+        maxQuantity: 9999,
+        unit: '개',
+        price: 0,
+        location: '',
+        description: '',
+        createdAt: now,
+        updatedAt: now,
+      })),
+      ...HOUSING_EXTRA_NAMES.map((name, idx) => ({
+        id: `housing-extra-${idx}`,
+        name,
+        category: HOUSING_CATEGORY,
+        type: 'finished' as const,
+        quantity: 0,
+        minQuantity: 0,
+        maxQuantity: 9999,
+        unit: '개',
+        price: 0,
+        location: '',
+        description: '',
+        createdAt: now,
+        updatedAt: now,
+      })),
+    ];
     const updatedItems = [...nonHousing, ...newItems];
     setItems(updatedItems);
     await storage.saveItems(updatedItems);
@@ -328,13 +363,13 @@ export const useInventory = () => {
     for (const color of HOUSING_COLORS) {
       const id = getHousingCaseMaterialId(color);
       if (!items.some(i => i.id === id)) {
-        toAdd.push({ ...base, id, name: getHousingCaseMaterialName(color), category: HOUSING_MATERIAL_CATEGORY });
+        toAdd.push({ ...base, id, name: getHousingCaseMaterialName(color), category: '부자재' });
       }
     }
     for (const sw of HOUSING_SWITCHES) {
       const id = getHousingSwitchMaterialId(sw);
       if (!items.some(i => i.id === id)) {
-        toAdd.push({ ...base, id, name: getHousingSwitchMaterialName(sw), category: HOUSING_MATERIAL_CATEGORY });
+        toAdd.push({ ...base, id, name: getHousingSwitchMaterialName(sw), category: '부자재' });
       }
     }
     if (toAdd.length === 0) return;
@@ -343,11 +378,11 @@ export const useInventory = () => {
     await storage.saveItems(updatedItems);
   }, [items]);
 
-  /** 하우징 60종에 BOM 설정: 케이스 1개 + 스위치(형태별 2/4개). 부자재 없으면 먼저 시드 */
+  /** 하우징 60종에 BOM 설정: 케이스 1개 + 스위치(형태별 2/4개). 부자재 없으면 먼저 시드 (핑크 3종 제외) */
   const seedBOMForHousing = useCallback(async () => {
     await seedHousingMaterials();
     const housingItems = items
-      .filter(i => i.type === 'finished' && i.category === HOUSING_CATEGORY)
+      .filter(i => i.type === 'finished' && i.category === HOUSING_CATEGORY && /^housing-\d+$/.test(i.id))
       .sort((a, b) => {
         const idxA = parseInt(a.id.replace('housing-', ''), 10) || 0;
         const idxB = parseInt(b.id.replace('housing-', ''), 10) || 0;
@@ -372,7 +407,40 @@ export const useInventory = () => {
     await storage.saveBOM(updatedBOM);
   }, [items, bomItems, seedHousingMaterials]);
 
+  /** 부자재: 고리 핑크, 하우징 지퍼백 3종, 무지 키캡 5종 추가 (없을 때만) */
+  const seedOptionalMaterials = useCallback(async () => {
+    const now = new Date().toISOString();
+    const base: Omit<InventoryItem, 'id' | 'name' | 'category'> = {
+      type: 'material',
+      quantity: 0,
+      minQuantity: 0,
+      maxQuantity: 9999,
+      unit: '개',
+      price: 0,
+      location: '',
+      description: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const toAdd: InventoryItem[] = [];
+    if (!items.some(i => i.name === '고리-핑크' || (i.category === '고리' && i.name === '핑크'))) {
+      toAdd.push({ ...base, id: 'ring-pink', name: '고리-핑크', category: '부자재' });
+    }
+    ZIPBAG_ITEMS.forEach((name, idx) => {
+      const id = `zipbag-${idx}`;
+      if (!items.some(i => i.id === id)) toAdd.push({ ...base, id, name, category: ZIPBAG_CATEGORY });
+    });
+    PLAIN_KEYCAP_COLORS.forEach((name, idx) => {
+      const id = `plain-keycap-${['white', 'pink', 'purple', 'mint', 'green'][idx]}`;
+      if (!items.some(i => i.id === id)) toAdd.push({ ...base, id, name, category: PLAIN_KEYCAP_CATEGORY });
+    });
+    if (toAdd.length === 0) return;
+    const updatedItems = [...items, ...toAdd];
+    setItems(updatedItems);
+    await storage.saveItems(updatedItems);
+  }, [items]);
+
   return {
-    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, seedHousingMaterials, seedBOMForHousing, refresh: loadData,
+    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, getBOMByMaterial, saveBOMByMaterial, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, seedHousingMaterials, seedBOMForHousing, seedOptionalMaterials, refresh: loadData,
   };
 };

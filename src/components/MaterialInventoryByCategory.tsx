@@ -17,7 +17,7 @@ export function MaterialInventoryByCategory({
   onTransaction,
   onViewDetail,
 }: MaterialInventoryByCategoryProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const byCategory = useMemo(() => {
     const map = new Map<string, InventoryItem[]>();
@@ -31,7 +31,7 @@ export function MaterialInventoryByCategory({
   }, [items]);
 
   const toggleCategory = (category: string) => {
-    setExpandedCategories((prev) => {
+    setCollapsedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(category)) next.delete(category);
       else next.add(category);
@@ -48,7 +48,7 @@ export function MaterialInventoryByCategory({
   return (
     <div className="material-by-category">
       {byCategory.map(([category, list]) => {
-        const isExpanded = expandedCategories.size === 0 || expandedCategories.has(category);
+        const isExpanded = !collapsedCategories.has(category);
         return (
           <div key={category} className="material-category-block">
             <button

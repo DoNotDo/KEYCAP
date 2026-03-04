@@ -429,6 +429,25 @@
   color: var(--color-text-quaternary);
 }
 
+/* BOM 부자재 기준 편집 */
+.bom-by-material-editor { margin-top: var(--spacing-md); }
+.bom-by-material-layout { display: grid; grid-template-columns: 280px 1fr; gap: var(--spacing-xl); min-height: 400px; }
+.bom-material-list h4, .bom-finished-list h4 { margin: 0 0 var(--spacing-sm); font-size: var(--font-lg); }
+.bom-material-list .section-desc, .bom-finished-list .empty-inline { color: var(--color-text-secondary); font-size: var(--font-sm); margin-bottom: var(--spacing-md); }
+.bom-material-category { margin-bottom: var(--spacing-md); }
+.bom-material-cat-name { display: block; font-size: var(--font-sm); font-weight: 600; color: var(--color-text-secondary); margin-bottom: var(--spacing-xs); }
+.bom-material-category ul { list-style: none; padding: 0; margin: 0; }
+.bom-material-category li { margin-bottom: 2px; }
+.bom-material-btn { width: 100%; padding: var(--spacing-sm) var(--spacing-md); text-align: left; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-primary); cursor: pointer; font-size: var(--font-base); }
+.bom-material-btn:hover { background: var(--color-bg-secondary); }
+.bom-material-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.bom-finished-table-wrap { overflow-x: auto; max-height: 360px; overflow-y: auto; }
+.bom-finished-list .form-input-small { width: 70px; padding: 4px 8px; }
+
+@media (max-width: 768px) {
+  .bom-by-material-layout { grid-template-columns: 1fr; }
+}
+
 /* BOM 설정 현황 섹션 */
 .bom-status-section {
   margin-top: var(--spacing-3xl);
