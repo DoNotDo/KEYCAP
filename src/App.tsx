@@ -22,12 +22,12 @@ import { MaterialOrderManagement } from './components/MaterialOrderManagement';
 import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { MaterialInventoryByCategory } from './components/MaterialInventoryByCategory';
 import { OrderVendorsAndSchedule } from './components/OrderVendorsAndSchedule';
-import { BetaSection } from './components/BetaSection';
+import { WeeklyShipmentPanel } from './components/WeeklyShipmentPanel';
 import { BRANCH_LIST } from './constants/branches';
 import { HOUSING_CATEGORY, HOUSING_COLORS, HOUSING_SWITCHES, HOUSING_SHAPES } from './constants/inventory';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
-import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin, BarChart2 } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -79,7 +79,7 @@ function App() {
   const [bomItem, setBomItem] = useState<InventoryItem | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | undefined>();
-  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'bom' | 'orders' | 'beta'>('dashboard');
+  const [primaryTab, setPrimaryTab] = useState<'dashboard' | 'inventory' | 'bom' | 'orders'>('dashboard');
   const [inventoryTab, setInventoryTab] = useState<'finished' | 'material'>('finished');
   const [orderTab, setOrderTab] = useState<'material-summary' | 'material-detail' | 'vendors'>('material-detail');
   const [selectedStatsType, setSelectedStatsType] = useState<'totalItems' | 'lowStock' | 'totalValue' | null>(null);
@@ -153,6 +153,17 @@ function App() {
   const branchConsumptions = useMemo(() => consumptions.filter(cons => cons.branchName === branchName), [consumptions, branchName]);
   const allConsumptions = useMemo(() => calculateAllMaterialConsumption(), [orders, items, bomItems]);
   const branchShortages = useMemo(() => calculateBranchShortages(), [orders, items, bomItems]);
+
+  const pendingReceiveCount = useMemo(() => {
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    return materialOrders.filter(o => {
+      if (o.status === 'received' || o.status === 'cancelled') return false;
+      const expected = o.expectedDate ? new Date(o.expectedDate).getTime() : null;
+      if (!expected) return true;
+      return expected <= now + weekMs;
+    }).length;
+  }, [materialOrders]);
 
   const branchStats = useMemo(() => {
     const lowStockItems = branchItems.filter(item => item.quantity <= item.minQuantity).length;
@@ -323,13 +334,11 @@ function App() {
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
     { id: 'bom', label: 'BOM 설정', icon: <Wrench size={18} /> },
     { id: 'orders', label: '발주', icon: <FileText size={18} /> },
-    { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
   ];
 
   const employeeTabs = [
     { id: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} /> },
     { id: 'inventory', label: '재고', icon: <Box size={18} /> },
-    { id: 'beta', label: '주간 보고', icon: <BarChart2 size={18} /> },
   ];
 
   return (
@@ -395,6 +404,16 @@ function App() {
           {primaryTab === 'dashboard' && (
             isAdmin ? (
               <div className="dashboard-content">
+                {pendingReceiveCount > 0 && (
+                  <div className="dashboard-alert warning" onClick={() => setPrimaryTab('orders')}>
+                    <AlertTriangle size={20} />
+                    <span>입고 미처리 {pendingReceiveCount}건 — 지연 또는 추가 발주가 필요할 수 있습니다.</span>
+                  </div>
+                )}
+                <div className="dashboard-section">
+                  <h2>주간 출고 · 예상 소모량</h2>
+                  <WeeklyShipmentPanel transactions={transactions} items={items} bomItems={bomItems} />
+                </div>
                 <div className="dashboard-section">
                   <h2>최근 거래 내역</h2>
                   <TransactionHistory transactions={transactions} items={items} />
@@ -504,12 +523,16 @@ function App() {
                 <h2>BOM 설정</h2>
                 <p className="section-desc">완성재고 1개당 필요한 부자재를 설정합니다. 출고 시 부자재 소모량이 자동 계산됩니다.</p>
               </div>
-              <div className="view-tabs" style={{ marginBottom: 'var(--spacing-lg)' }}>
-                <button type="button" className={bomViewMode === 'finished' ? 'active' : ''} onClick={() => setBomViewMode('finished')}>
-                  완성재고 기준
+              <div className="bom-mode-cards">
+                <button type="button" className={`bom-mode-card ${bomViewMode === 'finished' ? 'active' : ''}`} onClick={() => setBomViewMode('finished')}>
+                  <Box size={32} />
+                  <h3>완성재고 기준</h3>
+                  <p>품목별로 들어가는 부자재와 수량을 설정합니다.</p>
                 </button>
-                <button type="button" className={bomViewMode === 'material' ? 'active' : ''} onClick={() => setBomViewMode('material')}>
-                  부자재 기준 (체크박스)
+                <button type="button" className={`bom-mode-card ${bomViewMode === 'material' ? 'active' : ''}`} onClick={() => setBomViewMode('material')}>
+                  <Wrench size={32} />
+                  <h3>부자재 기준</h3>
+                  <p>부자재를 선택한 뒤, 사용하는 완성재고를 체크·수량 입력합니다.</p>
                 </button>
               </div>
               {bomViewMode === 'finished' && (
@@ -562,7 +585,6 @@ function App() {
             </div>
           )}
 
-          {primaryTab === 'beta' && <BetaSection isAdmin={isAdmin} branchName={currentUser?.branchName} reportedBy={currentUser?.username} items={items} bomItems={bomItems} transactions={transactions} onAddMaterialOrder={async (o) => { await addMaterialOrder({ ...o, updatedBy: currentUser?.username }); }} />}
         </div>
       </main>
 

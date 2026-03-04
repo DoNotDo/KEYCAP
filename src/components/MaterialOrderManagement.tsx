@@ -1,7 +1,8 @@
 import { useMemo, useState, FormEvent } from 'react';
 import { InventoryItem, MaterialOrder, MaterialOrderStatus } from '../types';
 import { OUTSOURCING_CATEGORIES } from '../constants/inventory';
-import { Calendar, CheckCircle, Package, PlusCircle, RefreshCw } from 'lucide-react';
+import { MaterialOrderReceiveModal } from './MaterialOrderReceiveModal';
+import { Calendar, CheckCircle, Package, PlusCircle, RefreshCw, PackageCheck, ListOrdered } from 'lucide-react';
 
 interface MaterialOrderManagementProps {
   materialOrders: MaterialOrder[];
@@ -35,6 +36,10 @@ export const MaterialOrderManagement = ({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<MaterialOrderStatus | 'all' | 'in-progress'>('in-progress');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchValues, setBatchValues] = useState({ supplier: '', orderDate: new Date().toISOString().slice(0, 10), expectedDate: '' });
+  const [batchSelected, setBatchSelected] = useState<Record<string, number>>({});
 
   const [formValues, setFormValues] = useState({
     materialItemId: '',
@@ -147,6 +152,41 @@ export const MaterialOrderManagement = ({
     });
   };
 
+  const pendingReceiveOrders = useMemo(() => materialOrders.filter(o => o.status === 'ordered' || o.status === 'partial'), [materialOrders]);
+
+  const materialsByCategory = useMemo(() => {
+    const map = new Map<string, InventoryItem[]>();
+    materialItems.forEach(item => {
+      const cat = item.category || '미분류';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(item);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [materialItems]);
+
+  const handleBatchSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const entries = Object.entries(batchSelected).filter(([, qty]) => qty > 0);
+    if (entries.length === 0) {
+      alert('품목을 선택하고 수량을 입력하세요.');
+      return;
+    }
+    entries.forEach(([materialItemId, quantity]) => {
+      onAddOrder({
+        materialItemId,
+        category: getMaterialCategory(materialItemId),
+        quantity,
+        status: 'ordered',
+        orderDate: new Date(batchValues.orderDate).toISOString(),
+        expectedDate: batchValues.expectedDate ? new Date(batchValues.expectedDate).toISOString() : undefined,
+        supplier: batchValues.supplier || undefined,
+      });
+    });
+    setBatchSelected({});
+    setBatchValues({ supplier: batchValues.supplier, orderDate: new Date().toISOString().slice(0, 10), expectedDate: '' });
+    alert(`${entries.length}건 발주를 등록했습니다.`);
+  };
+
   return (
     <div className="material-order-page">
       <div className="material-order-toolbar">
@@ -183,14 +223,22 @@ export const MaterialOrderManagement = ({
               카탈로그 동기화
             </button>
           )}
+          <button type="button" className="btn btn-primary btn-small" onClick={() => setShowReceiveModal(true)} disabled={pendingReceiveOrders.length === 0}>
+            <PackageCheck size={18} />
+            입고 처리 ({pendingReceiveOrders.length})
+          </button>
         </div>
       </div>
 
       <div className="material-order-form">
-        <h3>
-          <PlusCircle size={18} />
-          부자재 발주 등록
-        </h3>
+        <div className="material-order-form-header">
+          <h3><PlusCircle size={18} /> 부자재 발주 등록</h3>
+          <div className="view-tabs">
+            <button type="button" className={!batchMode ? 'active' : ''} onClick={() => setBatchMode(false)}>단건 발주</button>
+            <button type="button" className={batchMode ? 'active' : ''} onClick={() => setBatchMode(true)}><ListOrdered size={16} /> 일괄 발주</button>
+          </div>
+        </div>
+        {!batchMode && (
         <form onSubmit={handleSubmit} className="material-order-form-grid">
           <div className="form-group">
             <label>부자재 *</label>
@@ -295,12 +343,59 @@ export const MaterialOrderManagement = ({
             />
           </div>
           <div className="form-actions material-order-actions">
-            <button type="submit" className="btn btn-primary">
-              등록
-            </button>
+            <button type="submit" className="btn btn-primary">등록</button>
           </div>
         </form>
+        )}
+        {batchMode && (
+          <form onSubmit={handleBatchSubmit} className="batch-order-form">
+            <div className="batch-order-step">
+              <h4>1차 · 업체 선택</h4>
+              <input type="text" placeholder="업체명" value={batchValues.supplier} onChange={e => setBatchValues(v => ({ ...v, supplier: e.target.value }))} className="form-input" />
+            </div>
+            <div className="batch-order-step">
+              <h4>2차 · 부자재 선택 (체크 + 개당 수량)</h4>
+              <div className="batch-order-materials">
+                {materialsByCategory.map(([cat, list]) => (
+                  <div key={cat} className="batch-order-category">
+                    <span className="batch-order-cat-name">{cat}</span>
+                    <ul>
+                      {list.map(m => (
+                        <li key={m.id}>
+                          <label>
+                            <input type="checkbox" checked={(batchSelected[m.id] ?? 0) > 0} onChange={e => setBatchSelected(prev => ({ ...prev, [m.id]: e.target.checked ? (prev[m.id] || 1) : 0 }))} />
+                            <span>{m.name}</span>
+                          </label>
+                          <input type="number" min="0" value={batchSelected[m.id] || ''} onChange={e => setBatchSelected(prev => ({ ...prev, [m.id]: Number(e.target.value) }))} placeholder="수량" className="form-input-small" style={{ width: 80 }} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="batch-order-step">
+              <h4>3차 · 발주일 · 입고예정</h4>
+              <div className="form-row">
+                <label>발주일 <input type="date" value={batchValues.orderDate} onChange={e => setBatchValues(v => ({ ...v, orderDate: e.target.value }))} /></label>
+                <label>입고예정 <input type="date" value={batchValues.expectedDate} onChange={e => setBatchValues(v => ({ ...v, expectedDate: e.target.value }))} /></label>
+              </div>
+            </div>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">일괄 제출 (선택 품목 모두 발주)</button>
+            </div>
+          </form>
+        )}
       </div>
+
+      {showReceiveModal && (
+        <MaterialOrderReceiveModal
+          orders={materialOrders}
+          materialItems={materialItems}
+          onReceive={(orderId, updates) => handleOrderUpdate(orderId, updates)}
+          onClose={() => setShowReceiveModal(false)}
+        />
+      )}
 
       {groupedOrders.length === 0 ? (
         <div className="empty-state">부자재 발주 내역이 없습니다.</div>

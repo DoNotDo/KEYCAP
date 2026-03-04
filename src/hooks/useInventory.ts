@@ -160,10 +160,23 @@ export const useInventory = () => {
   }, [materialOrders]);
 
   const updateMaterialOrder = useCallback(async (orderId: string, updates: Partial<MaterialOrder>) => {
-    const updatedOrders = materialOrders.map(order => order.id === orderId ? { ...order, ...updates } : order);
+    const order = materialOrders.find(o => o.id === orderId);
+    const isNewlyReceived = updates.status === 'received' && order?.status !== 'received';
+    const updatedOrders = materialOrders.map(o => o.id === orderId ? { ...o, ...updates } : o);
     setMaterialOrders(updatedOrders);
     await storage.updateMaterialOrder(orderId, updates);
-  }, [materialOrders]);
+    if (isNewlyReceived && order) {
+      const qty = updates.receivedQuantity ?? order.quantity;
+      const material = items.find(i => i.id === order.materialItemId);
+      if (material && qty > 0) {
+        const newQty = material.quantity + qty;
+        await updateItem(order.materialItemId, { quantity: newQty });
+        const tx: Transaction = { id: crypto.randomUUID(), itemId: order.materialItemId, type: 'in', quantity: qty, reason: '발주 입고', timestamp: (updates.receivedAt || new Date().toISOString()).slice(0, 19), userId: (updates as any).updatedBy };
+        setTransactions(prev => [...prev, tx]);
+        await storage.saveTransaction(tx);
+      }
+    }
+  }, [materialOrders, items, updateItem]);
 
   const deleteMaterialOrder = useCallback(async (orderId: string) => {
     setMaterialOrders(prev => prev.filter(order => order.id !== orderId));
