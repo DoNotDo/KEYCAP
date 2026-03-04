@@ -187,6 +187,49 @@
   border-color: var(--color-border-hover);
 }
 
+/* 상품 라인 탭 (전체 / 하우징 / 와펜 / …) */
+.product-line-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.product-line-tabs::-webkit-scrollbar { display: none; }
+.product-line-tab {
+  flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.product-line-tab:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+.product-line-tab.active {
+  background: var(--color-primary);
+  color: #0f1419;
+  border-color: var(--color-primary);
+}
+
+/* 전체 탭 대시보드 전용 */
+.dashboard-full { max-width: 100%; }
+.dashboard-full-title {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xl) 0;
+}
+
 /* 통계 카드 그리드 */
 .stats-grid {
   display: grid;
@@ -390,6 +433,17 @@
 .vendor-by-category .vendor-category-body { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); padding: var(--spacing-lg); }
 .vendor-by-category .vendor-list h4, .vendor-by-category .materials-list h4 { margin: 0 0 var(--spacing-sm); font-size: var(--font-sm); }
 .vendor-by-category .empty-inline { margin: 0; font-size: var(--font-sm); color: var(--color-text-tertiary); }
+
+.vendor-material-section { margin-top: var(--spacing-2xl); padding-top: var(--spacing-2xl); border-top: 1px solid var(--color-border); }
+.vendor-material-editor { background: var(--color-bg-secondary); border-radius: var(--radius-md); padding: var(--spacing-xl); border: 1px solid var(--color-border); }
+.vendor-material-title { display: flex; align-items: center; gap: var(--spacing-sm); margin: 0 0 var(--spacing-sm); font-size: var(--font-lg); }
+.vendor-material-desc { color: var(--color-text-secondary); font-size: var(--font-sm); margin: 0 0 var(--spacing-lg); }
+.vendor-material-form .form-group { margin-bottom: var(--spacing-md); }
+.vendor-material-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--spacing-md); margin-bottom: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.vendor-material-row { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) 0; cursor: pointer; }
+.vendor-material-meta { font-size: var(--font-sm); color: var(--color-text-tertiary); margin-left: auto; }
+.vendor-material-actions { display: flex; align-items: center; gap: var(--spacing-md); }
+.vendor-material-saved { font-size: var(--font-sm); color: var(--color-success); }
 
 .search-box {
   display: flex;
@@ -1712,8 +1766,40 @@
 }
 
 .material-order-form-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
-.material-order-form-header .view-tabs { display: flex; gap: var(--spacing-xs); }
-.material-order-form-header .view-tabs button { padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--font-sm); }
+/* 부자재 발주 등록: 단건/일괄 세그먼트 스타일 */
+.material-order-form-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-md); }
+.material-order-form-header .view-tabs {
+  display: inline-flex;
+  gap: 0;
+  padding: var(--spacing-xs);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.material-order-form-header .view-tabs button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-base);
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.material-order-form-header .view-tabs button:hover { color: var(--color-text-primary); }
+.material-order-form-header .view-tabs button.active {
+  background: var(--color-primary);
+  color: #0f1419;
+}
+.batch-order-no-vendor-materials {
+  padding: var(--spacing-md);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+}
 .batch-order-form { margin-top: var(--spacing-md); }
 .batch-order-step { margin-bottom: var(--spacing-lg); }
 .batch-order-step h4 { margin: 0 0 var(--spacing-sm); font-size: var(--font-base); }

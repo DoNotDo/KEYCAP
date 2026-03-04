@@ -7,6 +7,7 @@ import { Calendar, CheckCircle, Package, PlusCircle, RefreshCw, PackageCheck, Li
 interface MaterialOrderManagementProps {
   materialOrders: MaterialOrder[];
   materialItems: InventoryItem[];
+  getMaterialIdsBySupplier?: (supplier: string) => string[];
   onAddOrder: (order: Omit<MaterialOrder, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateOrder: (orderId: string, updates: Partial<MaterialOrder>) => void;
   onDeleteOrder: (orderId: string) => void;
@@ -28,6 +29,7 @@ const inProgressStatuses: MaterialOrderStatus[] = ['planned', 'ordered', 'partia
 export const MaterialOrderManagement = ({
   materialOrders,
   materialItems,
+  getMaterialIdsBySupplier,
   onAddOrder,
   onUpdateOrder,
   onDeleteOrder,
@@ -154,15 +156,23 @@ export const MaterialOrderManagement = ({
 
   const pendingReceiveOrders = useMemo(() => materialOrders.filter(o => o.status === 'ordered' || o.status === 'partial'), [materialOrders]);
 
+  const batchMaterialList = useMemo(() => {
+    if (!batchMode || !getMaterialIdsBySupplier || !batchValues.supplier.trim()) return materialItems;
+    const ids = getMaterialIdsBySupplier(batchValues.supplier.trim());
+    if (ids.length === 0) return [];
+    return materialItems.filter(m => ids.includes(m.id));
+  }, [materialItems, batchMode, getMaterialIdsBySupplier, batchValues.supplier]);
+
   const materialsByCategory = useMemo(() => {
+    const list = batchMode && getMaterialIdsBySupplier && batchValues.supplier.trim() ? batchMaterialList : materialItems;
     const map = new Map<string, InventoryItem[]>();
-    materialItems.forEach(item => {
+    list.forEach(item => {
       const cat = item.category || '미분류';
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(item);
     });
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [materialItems]);
+  }, [materialItems, batchMode, getMaterialIdsBySupplier, batchValues.supplier, batchMaterialList]);
 
   const handleBatchSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -355,6 +365,9 @@ export const MaterialOrderManagement = ({
             </div>
             <div className="batch-order-step">
               <h4>2차 · 부자재 선택 (체크 + 개당 수량)</h4>
+              {getMaterialIdsBySupplier && batchValues.supplier.trim() && batchMaterialList.length === 0 && (
+                <p className="batch-order-no-vendor-materials">이 업체에 등록된 부자재가 없습니다. BOM 설정 탭에서 업체별 부자재를 먼저 등록하세요.</p>
+              )}
               <div className="batch-order-materials">
                 {materialsByCategory.map(([cat, list]) => (
                   <div key={cat} className="batch-order-category">

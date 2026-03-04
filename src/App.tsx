@@ -22,8 +22,10 @@ import { MaterialOrderSummary } from './components/MaterialOrderSummary';
 import { MaterialInventoryByCategory } from './components/MaterialInventoryByCategory';
 import { OrderVendorsAndSchedule } from './components/OrderVendorsAndSchedule';
 import { WeeklyShipmentPanel } from './components/WeeklyShipmentPanel';
+import { VendorMaterialEditor } from './components/VendorMaterialEditor';
 import { BRANCH_LIST } from './constants/branches';
 import { HOUSING_CATEGORY, HOUSING_COLORS, HOUSING_SWITCHES, HOUSING_SHAPES } from './constants/inventory';
+import { PRODUCT_LINE_ALL, PRODUCT_LINES } from './constants/productLines';
 import { fetchCatalogItems, mapCatalogToInventoryItem } from './utils/catalog';
 import { auth } from './utils/auth';
 import { Plus, Search, Package, AlertTriangle, DollarSign, Activity, ShoppingCart, LogOut, Users, FileText, LayoutDashboard, Box, Wrench, MapPin } from 'lucide-react';
@@ -69,8 +71,11 @@ function App() {
     seedBOMForHousing,
     seedOptionalMaterials,
     getItemEditLogsByItem,
+    getMaterialIdsBySupplier,
+    setVendorMaterialsForSupplier,
   } = useInventory();
 
+  const [selectedProductLine, setSelectedProductLine] = useState<string>(PRODUCT_LINE_ALL);
   const [showItemForm, setShowItemForm] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showBOMForm, setShowBOMForm] = useState(false);
@@ -114,14 +119,32 @@ function App() {
     });
   }, [currentUser, isAdmin, seedBOMForHousing]);
 
-  const stats = getStats();
-  const finishedItems = useMemo(() => items.filter(item => item.type === 'finished'), [items]);
-  const materialItems = useMemo(() => items.filter(item => item.type === 'material'), [items]);
+  const getItemProductLine = (item: InventoryItem) => item.productLine || '하우징';
+  const lineItemIds = useMemo(() => {
+    if (selectedProductLine === PRODUCT_LINE_ALL) return new Set(items.map(i => i.id));
+    return new Set(items.filter(i => getItemProductLine(i) === selectedProductLine).map(i => i.id));
+  }, [items, selectedProductLine]);
+  const itemsForLine = useMemo(() => {
+    if (selectedProductLine === PRODUCT_LINE_ALL) return items;
+    return items.filter(i => getItemProductLine(i) === selectedProductLine);
+  }, [items, selectedProductLine]);
+  const ordersForLine = useMemo(() => orders.filter(o => lineItemIds.has(o.finishedItemId)), [orders, lineItemIds]);
+  const materialOrdersForLine = useMemo(() => materialOrders.filter(mo => lineItemIds.has(mo.materialItemId)), [materialOrders, lineItemIds]);
+  const bomItemsForLine = useMemo(() => bomItems.filter(b => lineItemIds.has(b.finishedItemId)), [bomItems, lineItemIds]);
+  const suppliersFromOrders = useMemo(() => {
+    const set = new Set(materialOrdersForLine.map(o => o.supplier).filter((s): s is string => Boolean(s)));
+    return Array.from(set).sort();
+  }, [materialOrdersForLine]);
+
+  const stats = useMemo(() => getStats(), [items, transactions, orders]);
+  const finishedItems = useMemo(() => itemsForLine.filter(item => item.type === 'finished'), [itemsForLine]);
+  const materialItems = useMemo(() => itemsForLine.filter(item => item.type === 'material'), [itemsForLine]);
   const branchName = currentUser?.branchName;
   const branchItems = useMemo(() => {
-    if (isAdmin) return items;
-    return items.filter(item => item.branchName === branchName);
-  }, [items, isAdmin, branchName]);
+    const base = selectedProductLine === PRODUCT_LINE_ALL ? items : itemsForLine;
+    if (isAdmin) return base;
+    return base.filter(item => item.branchName === branchName);
+  }, [items, itemsForLine, selectedProductLine, isAdmin, branchName]);
   const branchFinishedItems = useMemo(() => branchItems.filter(item => item.type === 'finished'), [branchItems]);
   const branchMaterialItems = useMemo(() => branchItems.filter(item => item.type === 'material'), [branchItems]);
   const currentFinishedList = isAdmin ? finishedItems : branchFinishedItems;
@@ -149,21 +172,22 @@ function App() {
     }
     return list;
   }, [currentFinishedList, finishedCategoryFilter, housingColorFilter, housingSwitchFilter, housingShapeFilter]);
-  const branchOrders = useMemo(() => orders.filter(order => order.branchName === branchName), [orders, branchName]);
+  const branchOrders = useMemo(() => ordersForLine.filter(order => order.branchName === branchName), [ordersForLine, branchName]);
   const branchConsumptions = useMemo(() => consumptions.filter(cons => cons.branchName === branchName), [consumptions, branchName]);
   const allConsumptions = useMemo(() => calculateAllMaterialConsumption(), [orders, items, bomItems]);
   const branchShortages = useMemo(() => calculateBranchShortages(), [orders, items, bomItems]);
 
   const pendingReceiveCount = useMemo(() => {
+    const list = selectedProductLine === PRODUCT_LINE_ALL ? materialOrders : materialOrdersForLine;
     const now = Date.now();
     const weekMs = 7 * 24 * 60 * 60 * 1000;
-    return materialOrders.filter(o => {
+    return list.filter(o => {
       if (o.status === 'received' || o.status === 'cancelled') return false;
       const expected = o.expectedDate ? new Date(o.expectedDate).getTime() : null;
       if (!expected) return true;
       return expected <= now + weekMs;
     }).length;
-  }, [materialOrders]);
+  }, [materialOrders, materialOrdersForLine, selectedProductLine]);
 
   const branchStats = useMemo(() => {
     const lowStockItems = branchItems.filter(item => item.quantity <= item.minQuantity).length;
@@ -186,7 +210,16 @@ function App() {
     };
   }, [branchItems, branchConsumptions, branchFinishedItems, branchMaterialItems, branchOrders]);
 
-  const displayStats = isAdmin ? stats : branchStats;
+  const lineStats = useMemo(() => ({
+    totalItems: itemsForLine.length,
+    lowStockItems: itemsForLine.filter(i => i.quantity <= i.minQuantity).length,
+    totalValue: itemsForLine.reduce((s, i) => s + i.quantity * i.price, 0),
+    recentTransactions: transactions.filter(t => lineItemIds.has(t.itemId) && new Date(t.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)).length,
+    finishedItems: itemsForLine.filter(i => i.type === 'finished').length,
+    materialItems: itemsForLine.filter(i => i.type === 'material').length,
+    pendingOrders: ordersForLine.filter(o => o.status === 'pending').length,
+  }), [itemsForLine, ordersForLine, transactions, lineItemIds]);
+  const displayStats = selectedProductLine === PRODUCT_LINE_ALL ? (isAdmin ? stats : branchStats) : lineStats;
   const recentBranchOrders = useMemo(() => {
     return [...branchOrders]
       .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
@@ -379,6 +412,13 @@ function App() {
       </header>
 
       <main className="app-main">
+        <div className="product-line-tabs">
+          <button type="button" className={`product-line-tab ${selectedProductLine === PRODUCT_LINE_ALL ? 'active' : ''}`} onClick={() => setSelectedProductLine(PRODUCT_LINE_ALL)}>전체</button>
+          {PRODUCT_LINES.map(line => (
+            <button key={line} type="button" className={`product-line-tab ${selectedProductLine === line ? 'active' : ''}`} onClick={() => setSelectedProductLine(line)}>{line}</button>
+          ))}
+        </div>
+
         <div className="stats-grid">
           <div onClick={() => setSelectedStatsType('totalItems')} style={{ cursor: 'pointer' }}><StatsCard title="전체 품목" value={displayStats.totalItems} icon={Package} color="#667eea" bgColor="rgba(102, 126, 234, 0.1)" /></div>
           <div onClick={() => setSelectedStatsType('lowStock')} style={{ cursor: 'pointer' }}><StatsCard title="재고 부족" value={displayStats.lowStockItems} icon={AlertTriangle} color="#f56565" bgColor="rgba(245, 101, 101, 0.1)" /></div>
@@ -389,19 +429,58 @@ function App() {
           <StatsCard title="대기 주문" value={displayStats.pendingOrders} icon={ShoppingCart} color="#f6ad55" bgColor="rgba(246, 173, 85, 0.1)" />
         </div>
 
-        <TabNavigation tabs={isAdmin ? adminTabs : employeeTabs} activeTab={primaryTab} onTabChange={(tabId) => { setPrimaryTab(tabId as typeof primaryTab); setSelectedItemForDetail(undefined); }} />
-
-        <div className="mobile-bottom-nav">
-          {(isAdmin ? adminTabs : employeeTabs).map(tab => (
-            <button key={tab.id} className={`mobile-nav-item ${primaryTab === tab.id ? 'active' : ''}`} onClick={() => { setPrimaryTab(tab.id as typeof primaryTab); setSelectedItemForDetail(undefined); }}>
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        {selectedProductLine !== PRODUCT_LINE_ALL && (
+          <>
+            <TabNavigation tabs={isAdmin ? adminTabs : employeeTabs} activeTab={primaryTab} onTabChange={(tabId) => { setPrimaryTab(tabId as typeof primaryTab); setSelectedItemForDetail(undefined); }} />
+            <div className="mobile-bottom-nav">
+              {(isAdmin ? adminTabs : employeeTabs).map(tab => (
+                <button key={tab.id} type="button" className={`mobile-nav-item ${primaryTab === tab.id ? 'active' : ''}`} onClick={() => { setPrimaryTab(tab.id as typeof primaryTab); setSelectedItemForDetail(undefined); }}>
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div className="tab-content">
-          {primaryTab === 'dashboard' && (
+          {selectedProductLine === PRODUCT_LINE_ALL && isAdmin && (
+            <div className="dashboard-content dashboard-full">
+              <h2 className="dashboard-full-title">전체 주요 이슈</h2>
+              {pendingReceiveCount > 0 && (
+                <div className="dashboard-alert warning" onClick={() => { setSelectedProductLine('하우징'); setPrimaryTab('orders'); }}>
+                  <AlertTriangle size={20} />
+                  <span>입고 미처리 {pendingReceiveCount}건 — 지연 또는 추가 발주가 필요할 수 있습니다.</span>
+                </div>
+              )}
+              <div className="dashboard-section">
+                <h2>주간 출고 · 예상 소모량</h2>
+                <WeeklyShipmentPanel transactions={transactions} items={items} bomItems={bomItems} />
+              </div>
+              <div className="dashboard-section">
+                <h2>부자재 발주 요약</h2>
+                <MaterialOrderSummary materialOrders={materialOrders} materialItems={items.filter(i => i.type === 'material')} />
+              </div>
+              <div className="dashboard-section">
+                <h2>부자재 소모량 추산</h2>
+                <MaterialConsumptionPanel consumptions={allConsumptions} branchShortages={branchShortages} onBranchClick={setSelectedBranchShortage} />
+              </div>
+            </div>
+          )}
+          {selectedProductLine === PRODUCT_LINE_ALL && !isAdmin && (
+            <div className="dashboard-content dashboard-full">
+              <h2 className="dashboard-full-title">전체 요약</h2>
+              <div className="dashboard-section">
+                <h2>지점 발주 현황</h2>
+                {recentBranchOrders.length === 0 ? <p className="empty-state">최근 발주 내역이 없습니다.</p> : <div className="simple-list">{recentBranchOrders.map(order => <div key={order.id} className="simple-list-item"><span>{items.find(item => item.id === order.finishedItemId)?.name || '알 수 없음'}</span><span>{order.quantity.toLocaleString()}개</span><span>{new Date(order.orderDate).toLocaleDateString('ko-KR')}</span></div>)}</div>}
+              </div>
+              <div className="dashboard-section">
+                <h2>지점 소모/출고 내역</h2>
+                {recentBranchConsumptions.length === 0 ? <p className="empty-state">최근 소모 내역이 없습니다.</p> : <div className="simple-list">{recentBranchConsumptions.map(cons => <div key={cons.id} className="simple-list-item"><span>{items.find(item => item.id === cons.itemId)?.name || '알 수 없음'}</span><span>-{cons.quantity.toLocaleString()}개</span><span>{new Date(cons.processedAt).toLocaleDateString('ko-KR')}</span></div>)}</div>}
+              </div>
+            </div>
+          )}
+          {selectedProductLine !== PRODUCT_LINE_ALL && primaryTab === 'dashboard' && (
             isAdmin ? (
               <div className="dashboard-content">
                 {pendingReceiveCount > 0 && (
@@ -437,7 +516,7 @@ function App() {
             )
           )}
 
-          {primaryTab === 'inventory' && (
+          {selectedProductLine !== PRODUCT_LINE_ALL && primaryTab === 'inventory' && (
             <div className="main-content">
               {isAdmin ? <TabNavigation tabs={[{ id: 'finished', label: '완성재고', icon: <Box size={18} /> },{ id: 'material', label: '부자재 재고', icon: <Wrench size={18} /> }]} activeTab={inventoryTab} onTabChange={(tabId) => { setInventoryTab(tabId as typeof inventoryTab); setSelectedItemForDetail(undefined); }} /> : null}
               <div className="section-header">
@@ -517,7 +596,7 @@ function App() {
             </div>
           )}
 
-          {primaryTab === 'bom' && isAdmin && (
+          {selectedProductLine !== PRODUCT_LINE_ALL && primaryTab === 'bom' && isAdmin && (
             <div className="main-content">
               <div className="section-header">
                 <h2>BOM 설정</h2>
@@ -561,26 +640,34 @@ function App() {
                   onSave={saveBOMByMaterial}
                 />
               )}
+              <div className="vendor-material-section">
+                <VendorMaterialEditor
+                  materialItems={materialItems}
+                  suppliers={suppliersFromOrders}
+                  getMaterialIdsBySupplier={getMaterialIdsBySupplier}
+                  setVendorMaterialsForSupplier={setVendorMaterialsForSupplier}
+                />
+              </div>
             </div>
           )}
 
-          {primaryTab === 'orders' && isAdmin && (
+          {selectedProductLine !== PRODUCT_LINE_ALL && primaryTab === 'orders' && isAdmin && (
             <div className="main-content">
               <TabNavigation tabs={[{ id: 'material-detail', label: '부자재 발주 내역', icon: <FileText size={18} /> },{ id: 'material-summary', label: '부자재 발주 요약', icon: <FileText size={18} /> },{ id: 'vendors', label: '카테고리별 업체·입고일정', icon: <MapPin size={18} /> }]} activeTab={orderTab} onTabChange={(tabId) => setOrderTab(tabId as typeof orderTab)} />
               {orderTab === 'material-detail' && (
                 <>
                   <div className="section-header"><h2>부자재 발주 내역</h2></div>
-                  <MaterialOrderManagement materialOrders={materialOrders} materialItems={materialItems} onAddOrder={handleAddMaterialOrder} onUpdateOrder={handleUpdateMaterialOrder} onDeleteOrder={handleDeleteMaterialOrder} onSyncCatalog={handleSyncCatalog} />
+                  <MaterialOrderManagement materialOrders={materialOrdersForLine} materialItems={materialItems} getMaterialIdsBySupplier={getMaterialIdsBySupplier} onAddOrder={handleAddMaterialOrder} onUpdateOrder={handleUpdateMaterialOrder} onDeleteOrder={handleDeleteMaterialOrder} onSyncCatalog={handleSyncCatalog} />
                 </>
               )}
               {orderTab === 'material-summary' && (
                 <>
                   <div className="section-header"><h2>부자재 발주 요약</h2></div>
-                  <MaterialOrderSummary materialOrders={materialOrders} materialItems={materialItems} />
+                  <MaterialOrderSummary materialOrders={materialOrdersForLine} materialItems={materialItems} />
                 </>
               )}
               {orderTab === 'vendors' && (
-                <OrderVendorsAndSchedule materialOrders={materialOrders} materialItems={materialItems} />
+                <OrderVendorsAndSchedule materialOrders={materialOrdersForLine} materialItems={materialItems} />
               )}
             </div>
           )}
@@ -588,7 +675,7 @@ function App() {
         </div>
       </main>
 
-      {showItemForm && <ItemForm item={editingItem} defaultType={inventoryTab === 'finished' ? 'finished' : inventoryTab === 'material' ? 'material' : undefined} branches={branchNames} defaultBranchName={isAdmin ? '본사' : currentUser?.branchName} isAdmin={isAdmin} onSubmit={handleAddItem} onCancel={() => { setShowItemForm(false); setEditingItem(undefined); }} />}
+      {showItemForm && <ItemForm item={editingItem} defaultType={inventoryTab === 'finished' ? 'finished' : inventoryTab === 'material' ? 'material' : undefined} defaultProductLine={selectedProductLine !== PRODUCT_LINE_ALL ? selectedProductLine : undefined} branches={branchNames} defaultBranchName={isAdmin ? '본사' : currentUser?.branchName} isAdmin={isAdmin} onSubmit={handleAddItem} onCancel={() => { setShowItemForm(false); setEditingItem(undefined); }} />}
       {showTransactionModal && transactionItem && <TransactionModal item={transactionItem} onProcess={handleProcessTransaction} onCancel={() => { setShowTransactionModal(false); setTransactionItem(undefined); }} />}
       {showBOMForm && bomItem && <BOMForm finishedItem={bomItem} bomItems={getBOMByFinishedItem(bomItem.id)} materialItems={materialItems} onSave={handleSaveBOM} onCancel={() => { setShowBOMForm(false); setBomItem(undefined); }} />}
       {showUserManagement && <UserManagement onClose={() => setShowUserManagement(false)} onUpdate={() => { const user = auth.getCurrentUser(); setCurrentUser(user); }} />}

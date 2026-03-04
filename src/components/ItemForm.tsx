@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 interface ItemFormProps {
   item?: InventoryItem;
   defaultType?: ItemType;
+  defaultProductLine?: string;
   branches?: string[];
   defaultBranchName?: string;
   isAdmin?: boolean;
@@ -12,7 +13,7 @@ interface ItemFormProps {
   onCancel: () => void;
 }
 
-export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdmin, onSubmit, onCancel }: ItemFormProps) => {
+export const ItemForm = ({ item, defaultType, defaultProductLine, branches, defaultBranchName, isAdmin, onSubmit, onCancel }: ItemFormProps) => {
   const [formData, setFormData] = useState({
     branchName: item?.branchName || defaultBranchName || '',
     name: item?.name || '',
@@ -27,6 +28,7 @@ export const ItemForm = ({ item, defaultType, branches, defaultBranchName, isAdm
     price: item?.price || 0,
     location: item?.location || '',
     description: item?.description || '',
+    productLine: item?.productLine ?? defaultProductLine ?? '하우징',
   });
 
   const handleSubmit = (e: FormEvent) => {

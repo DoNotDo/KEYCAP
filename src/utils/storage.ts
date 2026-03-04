@@ -10,7 +10,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote, ItemEditLog, BetaWeeklyReport, BetaBranch, BetaCategory, BetaProduct } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote, ItemEditLog, VendorMaterial, BetaWeeklyReport, BetaBranch, BetaCategory, BetaProduct } from '../types';
 import { BETA_BRANCHES } from '../constants/beta';
 
 const COLLECTIONS = {
@@ -22,6 +22,7 @@ const COLLECTIONS = {
   MATERIAL_ORDERS: 'materialOrders',
   BRANCH_NOTES: 'branchNotes',
   ITEM_EDIT_LOGS: 'itemEditLogs',
+  VENDOR_MATERIALS: 'vendorMaterials',
   BETA_WEEKLY_REPORTS: 'betaWeeklyReports',
   BETA_BRANCHES: 'betaBranches',
   BETA_CATEGORIES: 'betaCategories',
@@ -36,6 +37,7 @@ let consumptionsCache: ConsumptionRecord[] = [];
 let materialOrdersCache: MaterialOrder[] = [];
 let branchNotesCache: BranchNote[] = [];
 let itemEditLogsCache: ItemEditLog[] = [];
+let vendorMaterialsCache: VendorMaterial[] = [];
 let betaReportsCache: BetaWeeklyReport[] = [];
 let betaBranchesCache: BetaBranch[] = [];
 let betaCategoriesCache: BetaCategory[] = [];
@@ -268,6 +270,32 @@ export const storage = {
     const ref = doc(db, COLLECTIONS.ITEM_EDIT_LOGS, log.id);
     await setDoc(ref, { ...log });
     itemEditLogsCache.push(log);
+  },
+
+  getVendorMaterials: (): VendorMaterial[] => vendorMaterialsCache,
+  getVendorMaterialsAsync: async (): Promise<VendorMaterial[]> => {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.VENDOR_MATERIALS));
+    vendorMaterialsCache = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as VendorMaterial));
+    return vendorMaterialsCache;
+  },
+  saveVendorMaterial: async (vm: VendorMaterial): Promise<void> => {
+    const ref = doc(db, COLLECTIONS.VENDOR_MATERIALS, vm.id);
+    await setDoc(ref, { ...vm });
+    if (!vendorMaterialsCache.some(m => m.id === vm.id)) vendorMaterialsCache.push(vm);
+  },
+  deleteVendorMaterial: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, COLLECTIONS.VENDOR_MATERIALS, id));
+    vendorMaterialsCache = vendorMaterialsCache.filter(m => m.id !== id);
+  },
+  setVendorMaterialsForSupplier: async (supplier: string, materialItemIds: string[]): Promise<void> => {
+    const toRemove = vendorMaterialsCache.filter(m => m.supplier === supplier);
+    for (const m of toRemove) await deleteDoc(doc(db, COLLECTIONS.VENDOR_MATERIALS, m.id));
+    vendorMaterialsCache = vendorMaterialsCache.filter(m => m.supplier !== supplier);
+    for (const materialItemId of materialItemIds) {
+      const vm: VendorMaterial = { id: crypto.randomUUID(), supplier, materialItemId };
+      await setDoc(doc(db, COLLECTIONS.VENDOR_MATERIALS, vm.id), { ...vm });
+      vendorMaterialsCache.push(vm);
+    }
   },
 
   getConsumptions: (): ConsumptionRecord[] => consumptionsCache,

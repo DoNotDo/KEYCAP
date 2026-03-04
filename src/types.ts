@@ -6,6 +6,8 @@ export interface InventoryItem {
   sku?: string; // 상품 코드/번호
   imageUrl?: string; // 이미지 URL
   category: string;
+  /** 상품 라인: 하우징, 와펜, 스트랩, 네임택, MD상품, 키캡. 미설정 시 하우징으로 간주 */
+  productLine?: string;
   /** 하우징 카테고리일 때만 사용: 컬러, LED청축/LED갈축/청축/갈축, 정사각형4구/직사각형4구/직사각형 2구 등 */
   subCategory?: string;
   type: ItemType; // 재고 타입 추가
@@ -28,6 +30,13 @@ export interface ItemEditLog {
   itemId: string;
   updatedAt: string;
   quantity: number;
+}
+
+/** 업체별 부자재 등록 (일괄 발주 시 해당 업체에서만 선택 가능) */
+export interface VendorMaterial {
+  id: string;
+  supplier: string;
+  materialItemId: string;
 }
 
 // BOM (Bill of Materials) - 완성재고 생산에 필요한 부자재 정보
