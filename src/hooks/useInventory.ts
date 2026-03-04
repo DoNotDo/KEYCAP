@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, BranchShortage, ConsumptionRecord, MaterialOrder, BranchNote, ItemEditLog } from '../types';
 import { storage } from '../utils/storage';
 import {
