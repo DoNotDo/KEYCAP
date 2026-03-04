@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, BranchShortage, ConsumptionRecord, MaterialOrder, BranchNote } from '../types';
+import { InventoryItem, Transaction, InventoryStats, BOMItem, Order, MaterialConsumption, BranchShortage, ConsumptionRecord, MaterialOrder, BranchNote, ItemEditLog } from '../types';
 import { storage } from '../utils/storage';
 import {
   HOUSING_CATEGORY,
@@ -26,6 +26,7 @@ export const useInventory = () => {
   const [consumptions, setConsumptions] = useState<ConsumptionRecord[]>([]);
   const [materialOrders, setMaterialOrders] = useState<MaterialOrder[]>([]);
   const [branchNotes, setBranchNotes] = useState<BranchNote[]>([]);
+  const [itemEditLogs, setItemEditLogs] = useState<ItemEditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
@@ -33,7 +34,7 @@ export const useInventory = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [loadedItems, loadedTransactions, loadedBOM, loadedOrders, loadedConsumptions, loadedMaterialOrders, loadedBranchNotes] = await Promise.all([
+      const [loadedItems, loadedTransactions, loadedBOM, loadedOrders, loadedConsumptions, loadedMaterialOrders, loadedBranchNotes, loadedItemEditLogs] = await Promise.all([
         storage.getItemsAsync(),
         storage.getTransactionsAsync(),
         storage.getBOMAsync(),
@@ -41,6 +42,7 @@ export const useInventory = () => {
         storage.getConsumptionsAsync(),
         storage.getMaterialOrdersAsync(),
         storage.getBranchNotesAsync(),
+        storage.getItemEditLogsAsync(),
       ]);
       setItems(loadedItems);
       setTransactions(loadedTransactions);
@@ -49,6 +51,7 @@ export const useInventory = () => {
       setConsumptions(loadedConsumptions);
       setMaterialOrders(loadedMaterialOrders);
       setBranchNotes(loadedBranchNotes);
+      setItemEditLogs(loadedItemEditLogs);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
     } finally {
@@ -65,9 +68,16 @@ export const useInventory = () => {
   }, [items]);
 
   const updateItem = useCallback(async (id: string, updates: Partial<InventoryItem>) => {
-    const updatedItems = items.map(item => item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString() } : item);
+    const now = new Date().toISOString();
+    const updatedItems = items.map(item => item.id === id ? { ...item, ...updates, updatedAt: now } : item);
+    const updated = updatedItems.find(i => i.id === id);
     setItems(updatedItems);
     await storage.saveItems(updatedItems);
+    if (updated) {
+      const log: ItemEditLog = { id: crypto.randomUUID(), itemId: id, updatedAt: now, quantity: updated.quantity };
+      setItemEditLogs(prev => [...prev, log]);
+      await storage.saveItemEditLog(log);
+    }
   }, [items]);
 
   const deleteItem = useCallback(async (id: string) => {
@@ -453,7 +463,11 @@ export const useInventory = () => {
     await storage.saveItems(updatedItems);
   }, [items]);
 
+  const getItemEditLogsByItem = useCallback((itemId: string): ItemEditLog[] => {
+    return itemEditLogs.filter(log => log.itemId === itemId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [itemEditLogs]);
+
   return {
-    items, transactions, bomItems, orders, materialOrders, branchNotes, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, getBOMByMaterial, saveBOMByMaterial, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, seedHousingMaterials, seedBOMForHousing, seedOptionalMaterials, refresh: loadData,
+    items, transactions, bomItems, orders, materialOrders, branchNotes, itemEditLogs, getItemEditLogsByItem, loading, addItem, updateItem, deleteItem, processTransaction, processStockCount, saveBOMForFinishedItem, getBOMByFinishedItem, getBOMByMaterial, saveBOMByMaterial, addOrder, updateOrder, addMaterialOrder, updateMaterialOrder, deleteMaterialOrder, saveBranchNote, calculateMaterialConsumption, calculateAllMaterialConsumption, calculateBranchShortages, consumptions, shipOrder, receiveOrder, completeOrder, getStats, seedHousingItems, seedHousingMaterials, seedBOMForHousing, seedOptionalMaterials, refresh: loadData,
   };
 };

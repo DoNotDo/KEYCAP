@@ -22,6 +22,14 @@ export interface InventoryItem {
   updatedAt: string;
 }
 
+/** 재고 항목 수정 로그 (수정 날짜, 현재 수량만) */
+export interface ItemEditLog {
+  id: string;
+  itemId: string;
+  updatedAt: string;
+  quantity: number;
+}
+
 // BOM (Bill of Materials) - 완성재고 생산에 필요한 부자재 정보
 export interface BOMItem {
   id: string;

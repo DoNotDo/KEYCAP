@@ -10,7 +10,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote, BetaWeeklyReport, BetaBranch, BetaCategory, BetaProduct } from '../types';
+import { InventoryItem, Transaction, BOMItem, Order, ConsumptionRecord, MaterialOrder, BranchNote, ItemEditLog, BetaWeeklyReport, BetaBranch, BetaCategory, BetaProduct } from '../types';
 import { BETA_BRANCHES } from '../constants/beta';
 
 const COLLECTIONS = {
@@ -21,6 +21,7 @@ const COLLECTIONS = {
   CONSUMPTIONS: 'consumptions',
   MATERIAL_ORDERS: 'materialOrders',
   BRANCH_NOTES: 'branchNotes',
+  ITEM_EDIT_LOGS: 'itemEditLogs',
   BETA_WEEKLY_REPORTS: 'betaWeeklyReports',
   BETA_BRANCHES: 'betaBranches',
   BETA_CATEGORIES: 'betaCategories',
@@ -34,6 +35,7 @@ let ordersCache: Order[] = [];
 let consumptionsCache: ConsumptionRecord[] = [];
 let materialOrdersCache: MaterialOrder[] = [];
 let branchNotesCache: BranchNote[] = [];
+let itemEditLogsCache: ItemEditLog[] = [];
 let betaReportsCache: BetaWeeklyReport[] = [];
 let betaBranchesCache: BetaBranch[] = [];
 let betaCategoriesCache: BetaCategory[] = [];
@@ -251,6 +253,21 @@ export const storage = {
     await setDoc(noteRef, { ...note });
     const index = branchNotesCache.findIndex(n => n.id === (note.id || note.branchName));
     if (index > -1) branchNotesCache[index] = note; else branchNotesCache.push(note);
+  },
+
+  getItemEditLogs: (): ItemEditLog[] => itemEditLogsCache,
+  getItemEditLogsAsync: async (): Promise<ItemEditLog[]> => {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.ITEM_EDIT_LOGS));
+    itemEditLogsCache = snapshot.docs.map(d => {
+      const data = d.data();
+      return { id: d.id, ...data, updatedAt: data.updatedAt?.toDate?.().toISOString?.() || data.updatedAt } as ItemEditLog;
+    });
+    return itemEditLogsCache;
+  },
+  saveItemEditLog: async (log: ItemEditLog): Promise<void> => {
+    const ref = doc(db, COLLECTIONS.ITEM_EDIT_LOGS, log.id);
+    await setDoc(ref, { ...log });
+    itemEditLogsCache.push(log);
   },
 
   getConsumptions: (): ConsumptionRecord[] => consumptionsCache,

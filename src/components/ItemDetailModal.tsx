@@ -1,4 +1,4 @@
-import { InventoryItem, BOMItem, ConsumptionRecord, Order } from '../types';
+import { InventoryItem, BOMItem, ConsumptionRecord, Order, ItemEditLog } from '../types';
 import { X } from 'lucide-react';
 import { BOMReceipt } from './BOMReceipt';
 import { ConsumptionHistory } from './ConsumptionHistory';
@@ -9,10 +9,11 @@ interface ItemDetailModalProps {
   materialItems: InventoryItem[];
   consumptions: ConsumptionRecord[];
   orders?: Order[];
+  editLogs?: ItemEditLog[];
   onClose: () => void;
 }
 
-export const ItemDetailModal = ({ item, bomItems, materialItems, consumptions, orders, onClose }: ItemDetailModalProps) => {
+export const ItemDetailModal = ({ item, bomItems, materialItems, consumptions, orders, editLogs = [], onClose }: ItemDetailModalProps) => {
   const itemBOM = bomItems.filter(bom => bom.finishedItemId === item.id);
 
   return (
@@ -47,6 +48,23 @@ export const ItemDetailModal = ({ item, bomItems, materialItems, consumptions, o
 
           <div className="item-detail-section">
             <ConsumptionHistory consumptions={consumptions} items={[item]} orders={orders} itemId={item.id} itemType={item.type} />
+          </div>
+
+          <div className="item-detail-section item-edit-logs-section">
+            <h3>수정 이력</h3>
+            <p className="section-desc">재고 항목 수정 시 저장된 수정 날짜와 현재 수량입니다. 최신순입니다.</p>
+            <div className="item-edit-logs-list">
+              {editLogs.length === 0 ? (
+                <p className="empty-inline">수정 이력이 없습니다.</p>
+              ) : (
+                editLogs.map(log => (
+                  <div key={log.id} className="item-edit-log-row">
+                    <span className="item-edit-log-date">{new Date(log.updatedAt).toLocaleString('ko-KR')}</span>
+                    <span className="item-edit-log-qty">현재 수량 {log.quantity} {item.unit}</span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

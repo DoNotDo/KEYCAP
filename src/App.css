@@ -1097,6 +1097,14 @@
   justify-content: center;
 }
 
+.item-edit-logs-section { margin-top: var(--spacing-lg); border-top: 1px solid var(--color-border); padding-top: var(--spacing-lg); }
+.item-edit-logs-section .section-desc { font-size: var(--font-sm); color: var(--color-text-secondary); margin: 0 0 var(--spacing-sm); }
+.item-edit-logs-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-sm); background: var(--color-bg-secondary); }
+.item-edit-log-row { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-xs) var(--spacing-sm); border-bottom: 1px solid var(--color-border); font-size: var(--font-sm); }
+.item-edit-log-row:last-child { border-bottom: none; }
+.item-edit-log-date { color: var(--color-text-secondary); }
+.item-edit-log-qty { font-weight: 600; }
+
 .close-btn:hover {
   background: var(--color-bg-tertiary);
   color: var(--color-text-secondary);

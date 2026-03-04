@@ -69,6 +69,7 @@ function App() {
     seedHousingItems,
     seedBOMForHousing,
     seedOptionalMaterials,
+    getItemEditLogsByItem,
   } = useInventory();
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -595,7 +596,7 @@ function App() {
       {selectedBranchShortage && <BranchShortageDetail branchShortage={selectedBranchShortage} items={items} onClose={() => setSelectedBranchShortage(undefined)} />}
       {selectedOrder && <OrderDetailModal order={selectedOrder} items={items} consumptions={calculateMaterialConsumption(selectedOrder.finishedItemId, selectedOrder.quantity)} onClose={() => setSelectedOrder(undefined)} />}
       {selectedStatsType && <StatsDetailModal type={selectedStatsType} stats={stats} items={items} onClose={() => setSelectedStatsType(null)} />}
-      {selectedItemForDetail && <ItemDetailModal item={selectedItemForDetail} bomItems={bomItems} materialItems={materialItems} consumptions={consumptions} orders={orders} onClose={() => setSelectedItemForDetail(undefined)} />}
+      {selectedItemForDetail && <ItemDetailModal item={selectedItemForDetail} bomItems={bomItems} materialItems={materialItems} consumptions={consumptions} orders={orders} editLogs={getItemEditLogsByItem(selectedItemForDetail.id)} onClose={() => setSelectedItemForDetail(undefined)} />}
     </div>
   );
 }
