@@ -130,7 +130,6 @@ function App() {
   }, [items, selectedProductLine]);
   const ordersForLine = useMemo(() => orders.filter(o => lineItemIds.has(o.finishedItemId)), [orders, lineItemIds]);
   const materialOrdersForLine = useMemo(() => materialOrders.filter(mo => lineItemIds.has(mo.materialItemId)), [materialOrders, lineItemIds]);
-  const bomItemsForLine = useMemo(() => bomItems.filter(b => lineItemIds.has(b.finishedItemId)), [bomItems, lineItemIds]);
   const suppliersFromOrders = useMemo(() => {
     const set = new Set(materialOrdersForLine.map(o => o.supplier).filter((s): s is string => Boolean(s)));
     return Array.from(set).sort();
