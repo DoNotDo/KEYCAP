@@ -46,7 +46,10 @@ export const useInventory = () => {
       ]);
       setItems(loadedItems);
       setTransactions(loadedTransactions);
-      setBomItems(loadedBOM);
+      const validItemIds = new Set(loadedItems.map(i => i.id));
+      const cleanedBOM = loadedBOM.filter(b => validItemIds.has(b.finishedItemId) && validItemIds.has(b.materialItemId));
+      if (cleanedBOM.length !== loadedBOM.length) await storage.saveBOM(cleanedBOM);
+      setBomItems(cleanedBOM);
       setOrders(loadedOrders);
       setConsumptions(loadedConsumptions);
       setMaterialOrders(loadedMaterialOrders);
@@ -84,7 +87,12 @@ export const useInventory = () => {
     const updatedItems = items.filter(item => item.id !== id);
     setItems(updatedItems);
     await storage.saveItems(updatedItems);
-  }, [items]);
+    const updatedBOM = bomItems.filter(bom => bom.finishedItemId !== id && bom.materialItemId !== id);
+    if (updatedBOM.length !== bomItems.length) {
+      setBomItems(updatedBOM);
+      await storage.saveBOM(updatedBOM);
+    }
+  }, [items, bomItems]);
 
   const processTransaction = useCallback(async (itemId: string, type: 'in' | 'out', quantity: number, reason: string, userId?: string) => {
     const item = items.find(i => i.id === itemId);
@@ -121,30 +129,35 @@ export const useInventory = () => {
   }, [items]);
 
   const saveBOMForFinishedItem = useCallback(async (finishedItemId: string, bomList: Omit<BOMItem, 'id'>[]) => {
-    const filteredBOM = bomItems.filter(bom => bom.finishedItemId !== finishedItemId);
-    const newBOMItems: BOMItem[] = bomList.map(bom => ({ ...bom, finishedItemId, id: crypto.randomUUID() }));
+    const validIds = new Set(items.map(i => i.id));
+    const filteredBOM = bomItems.filter(bom => bom.finishedItemId !== finishedItemId && validIds.has(bom.finishedItemId) && validIds.has(bom.materialItemId));
+    const newBOMItems: BOMItem[] = bomList
+      .filter(bom => validIds.has(bom.materialItemId))
+      .map(bom => ({ ...bom, finishedItemId, id: crypto.randomUUID() }));
     const updatedBOM = [...filteredBOM, ...newBOMItems];
     setBomItems(updatedBOM);
     await storage.saveBOM(updatedBOM);
-  }, [bomItems]);
+  }, [bomItems, items]);
+
+  const itemIdsSet = useMemo(() => new Set(items.map(i => i.id)), [items]);
 
   const getBOMByFinishedItem = useCallback((finishedItemId: string): BOMItem[] => {
-    return bomItems.filter(bom => bom.finishedItemId === finishedItemId);
-  }, [bomItems]);
+    return bomItems.filter(bom => bom.finishedItemId === finishedItemId && itemIdsSet.has(bom.materialItemId));
+  }, [bomItems, itemIdsSet]);
 
   const getBOMByMaterial = useCallback((materialItemId: string): BOMItem[] => {
-    return bomItems.filter(bom => bom.materialItemId === materialItemId);
-  }, [bomItems]);
+    return bomItems.filter(bom => bom.materialItemId === materialItemId && itemIdsSet.has(bom.finishedItemId));
+  }, [bomItems, itemIdsSet]);
 
   const saveBOMByMaterial = useCallback(async (materialItemId: string, list: { finishedItemId: string; quantity: number }[]) => {
-    const other = bomItems.filter(bom => bom.materialItemId !== materialItemId);
+    const other = bomItems.filter(bom => bom.materialItemId !== materialItemId && itemIdsSet.has(bom.finishedItemId) && itemIdsSet.has(bom.materialItemId));
     const newBOM: BOMItem[] = list
-      .filter(row => row.quantity > 0)
+      .filter(row => row.quantity > 0 && itemIdsSet.has(row.finishedItemId))
       .map(row => ({ id: crypto.randomUUID(), finishedItemId: row.finishedItemId, materialItemId, quantity: row.quantity }));
     const updatedBOM = [...other, ...newBOM];
     setBomItems(updatedBOM);
     await storage.saveBOM(updatedBOM);
-  }, [bomItems]);
+  }, [bomItems, itemIdsSet]);
 
   const addOrder = useCallback(async (order: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     const newOrder: Order = { ...order, id: crypto.randomUUID(), status: 'pending', createdAt: new Date().toISOString() };

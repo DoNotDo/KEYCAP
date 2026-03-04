@@ -5,7 +5,6 @@ import { StatsCard } from './components/StatsCard';
 import { ItemForm } from './components/ItemForm';
 import { TransactionModal } from './components/TransactionModal';
 import { InventoryTable } from './components/InventoryTable';
-import { TransactionHistory } from './components/TransactionHistory';
 import { BOMForm } from './components/BOMForm';
 import { MaterialConsumptionPanel } from './components/MaterialConsumptionPanel';
 import { Login } from './components/Login';
@@ -416,8 +415,8 @@ function App() {
                   <WeeklyShipmentPanel transactions={transactions} items={items} bomItems={bomItems} />
                 </div>
                 <div className="dashboard-section">
-                  <h2>최근 거래 내역</h2>
-                  <TransactionHistory transactions={transactions} items={items} />
+                  <h2>부자재 발주 요약</h2>
+                  <MaterialOrderSummary materialOrders={materialOrders} materialItems={materialItems} />
                 </div>
                 <div className="dashboard-section">
                   <h2>부자재 소모량 추산</h2>
